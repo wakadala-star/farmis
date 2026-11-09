@@ -1,0 +1,10 @@
+# Inspiration images & source assets — kept local, not pushed
+/images/
+
+# IDEs
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

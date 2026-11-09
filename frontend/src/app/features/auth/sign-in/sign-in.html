@@ -1,0 +1,100 @@
+<section class="auth-card">
+    <div class="auth-card__brand">
+      <app-brand [compact]="true" />
+    </div>
+
+    <header class="auth-card__head">
+      <h1 class="auth-card__title">Welcome back</h1>
+      <p class="auth-card__sub">Sign in to your FARMIS workspace.</p>
+    </header>
+
+    @if (notice()) {
+      <div class="form-alert form-alert--success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>{{ notice() }}</span>
+      </div>
+    }
+
+    @if (error()) {
+      <div class="form-alert form-alert--error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <div class="auth-hint">
+      <i class="fa-solid fa-flask"></i>
+      <span>
+        <strong>Demo mode.</strong> Owner credentials are prefilled — backend
+        integration comes later.
+      </span>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      <div class="field">
+        <label class="field__label" for="signin-email">Email address</label>
+        <div class="field__box">
+          <i class="fa-regular fa-envelope field__icon"></i>
+          <input
+            id="signin-email"
+            type="email"
+            class="input"
+            [class.is-invalid]="invalid('email')"
+            placeholder="you@farm.com"
+            formControlName="email"
+            autocomplete="email"
+          />
+        </div>
+        @if (invalid('email')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Please enter a valid email address.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="signin-password">Password</label>
+        <div class="field__box">
+          <i class="fa-solid fa-lock field__icon"></i>
+          <input
+            id="signin-password"
+            [type]="hidePassword() ? 'password' : 'text'"
+            class="input input--pw"
+            [class.is-invalid]="invalid('password')"
+            placeholder="Your password"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+          <button
+            type="button"
+            class="field__reveal"
+            (click)="togglePassword()"
+            [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          >
+            <i
+              class="fa-regular"
+              [class.fa-eye]="hidePassword()"
+              [class.fa-eye-slash]="!hidePassword()"
+            ></i>
+          </button>
+        </div>
+        @if (invalid('password')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Password is required.
+          </span>
+        }
+      </div>
+
+      <button class="btn btn--primary" type="submit">
+        <span>Sign In</span>
+        <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      New to FARMIS?
+      <a routerLink="/signup">Create an account</a>
+    </p>
+  </section>

@@ -1,0 +1,840 @@
+/* ============================================================
+   FARMIS — dashboard: grid, stat cards, widgets, chart, tables
+   ============================================================ */
+@use 'tokens' as *;
+
+/* ---------------- Responsive grid ----------------
+   Mobile-first. Cards are placed in DOM order on desktop;
+   below 992px an `order` rule re-flows them like the
+   tablet/mobile inspo (quick actions & recent activity
+   are desktop-hidden).
+   12-column grid at every size; stat cards span 6 (2×2)
+   on phones and 3 (1×4) from 768px up.               */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* ---------------- Stat cards ---------------- */
+.stat {
+  grid-column: span 6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 14px;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  min-width: 0;
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    font-size: 19px;
+    flex: 0 0 auto;
+  }
+
+  &__body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__value {
+    font-size: 21px;
+    font-weight: 800;
+    color: $ink;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  &__trend {
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  &__label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: $muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  &--green {
+    background: #eaf7ee;
+
+    .stat__icon {
+      background: #d7f0df;
+      color: $green-700;
+    }
+  }
+
+  &--blue {
+    background: $blue-100;
+
+    .stat__icon {
+      background: #d8e7fd;
+      color: $blue-600;
+    }
+  }
+
+  &--amber {
+    background: #fbf6dd;
+
+    .stat__icon {
+      background: #f4edc4;
+      color: #a3840f;
+    }
+  }
+
+  &--purple {
+    background: $purple-100;
+
+    .stat__icon {
+      background: #e6e0fa;
+      color: $purple-600;
+    }
+  }
+}
+
+/* ---------------- Widgets ---------------- */
+.widget {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius;
+  box-shadow: $shadow-card;
+  min-width: 0;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 17px 4px;
+  }
+
+  &__icon {
+    width: 20px;
+    text-align: center;
+    color: $green-600;
+    font-size: 15px;
+  }
+
+  &__title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: $ink;
+    letter-spacing: -0.01em;
+  }
+
+  &__action {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__body {
+    padding: 8px 17px 15px;
+    flex: 1;
+  }
+}
+
+.widget__viewall-mobile {
+  display: inline-flex;
+}
+
+.select-mini-wrap {
+  display: none;
+}
+
+@include from($bp-md) {
+  .select-mini-wrap {
+    display: block;
+  }
+
+  .widget__viewall-mobile {
+    display: none;
+  }
+}
+
+.select-mini {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid $line;
+  background-color: #fff;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $ink-2;
+  padding: 7px 26px 7px 10px;
+  cursor: default;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+
+/* ---------------- Performance chart ---------------- */
+.chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 2px 17px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: $muted;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .is-crops {
+    background: #35c46a;
+  }
+
+  .is-livestock {
+    background: #4d9df3;
+  }
+}
+
+.chart {
+  position: relative;
+  height: 196px;
+  margin-top: 6px;
+
+  &__plot {
+    position: absolute;
+    inset: 0 0 26px 32px;
+  }
+
+  &__line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    border-top: 1px dashed #e9ece9;
+  }
+
+  &__tick {
+    position: absolute;
+    left: -32px;
+    width: 26px;
+    text-align: right;
+    transform: translateY(-50%);
+    font-size: 10.5px;
+    color: $muted-2;
+    font-weight: 500;
+  }
+
+  &__groups {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    z-index: 1;
+  }
+
+  &__group {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  &__bar {
+    width: clamp(14px, 30%, 30px);
+    border-radius: 7px 7px 0 0;
+    transition: height 0.5s ease;
+    min-height: 4px;
+
+    &--crops {
+      background: linear-gradient(180deg, #43d477, #22a351);
+    }
+
+    &--livestock {
+      background: linear-gradient(180deg, #61aaf7, #3b82f6);
+    }
+  }
+
+  &__label {
+    position: absolute;
+    bottom: -22px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: $muted;
+  }
+}
+
+/* ---------------- Alerts ---------------- */
+.alert-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid $line-soft;
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  &__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: $ink;
+  }
+
+  &__text {
+    font-size: 12.5px;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  &__time {
+    font-size: 11.5px;
+    color: $muted-2;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  &--warn {
+    .alert-row__icon {
+      background: #fff2e0;
+      color: $amber-500;
+    }
+
+    .alert-row__text {
+      color: #dc6c14;
+    }
+  }
+
+  &--info {
+    .alert-row__icon {
+      background: #e3edfd;
+      color: $blue-600;
+    }
+
+    .alert-row__text {
+      color: #2f6fd6;
+    }
+  }
+
+  &--ok {
+    .alert-row__icon {
+      background: #ddf5e5;
+      color: #16a34a;
+    }
+
+    .alert-row__text {
+      color: #15803d;
+    }
+  }
+}
+
+/* ---------------- Promo card ---------------- */
+.promo {
+  grid-column: span 12;
+  position: relative;
+  overflow: hidden;
+  border-radius: $radius;
+  min-height: 210px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px;
+  background-color: #14682f;
+  background-image: url('/images/promo-farm.jpg'),
+    linear-gradient(160deg, #0b3f24 0%, #157a3c 55%, #35b564 100%);
+  background-size: cover;
+  background-position: center;
+  box-shadow: $shadow-card;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(5, 30, 16, 0) 20%,
+      rgba(5, 30, 16, 0.82) 100%
+    );
+  }
+
+  &__leaf {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    font-size: 52px;
+    color: rgba(255, 255, 255, 0.24);
+    z-index: 1;
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    max-width: 82%;
+  }
+
+  &__title {
+    font-size: 18.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  &__sub {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.82);
+    margin-top: 4px;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 13px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, $green-500, $green-700);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 8px 16px rgba(6, 45, 24, 0.35);
+    cursor: default;
+  }
+}
+
+/* ---------------- Recent sales table ---------------- */
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+
+  th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: $muted-2;
+    padding: 8px 6px;
+    border-bottom: 1px solid $line;
+  }
+
+  td {
+    padding: 11px 6px;
+    border-bottom: 1px solid $line-soft;
+    color: $ink-2;
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .is-strong {
+    font-weight: 700;
+    color: $ink;
+  }
+
+  .is-date {
+    color: $muted;
+    white-space: nowrap;
+  }
+
+  .is-amount {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: $bp-md-down) {
+  .sales-table {
+    thead {
+      display: none;
+    }
+
+    tr {
+      display: block;
+      padding: 10px 0;
+      border-bottom: 1px solid $line-soft;
+    }
+
+    tr:last-child {
+      border-bottom: 0;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 3px 2px;
+      border: 0;
+      text-align: right;
+
+      &::before {
+        content: attr(data-label);
+        font-size: 11.5px;
+        font-weight: 600;
+        color: $muted-2;
+        text-align: left;
+      }
+    }
+  }
+}
+
+/* ---------------- Upcoming activities ---------------- */
+.activity {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid $line-soft;
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  &__date {
+    width: 44px;
+    border: 1px solid $line;
+    border-radius: 10px;
+    text-align: center;
+    padding: 5px 0;
+    flex: 0 0 auto;
+    background: #fbfcfb;
+  }
+
+  &__day {
+    display: block;
+    font-size: 15px;
+    font-weight: 800;
+    color: $ink;
+    line-height: 1.1;
+  }
+
+  &__month {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: $muted-2;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: $ink;
+  }
+
+  &__sub {
+    font-size: 12px;
+    color: $muted;
+  }
+}
+
+.chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  &--today {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  &--tomorrow {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  &--neutral {
+    background: #f1f3f5;
+    color: $muted;
+  }
+}
+
+/* ---------------- Quick actions ---------------- */
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  border: 1px solid $line;
+  border-radius: 12px;
+  background: #fbfcfb;
+  font-size: 13px;
+  font-weight: 600;
+  color: $ink-2;
+  cursor: default;
+  user-select: none;
+  transition: border-color 0.12s ease, background 0.12s ease;
+
+  i {
+    color: $green-600;
+    font-size: 15px;
+  }
+
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ---------------- Recent activity ---------------- */
+.recent-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid $line-soft;
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  &__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 13.5px;
+    flex: 0 0 auto;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: $ink;
+  }
+
+  &__time {
+    font-size: 11.5px;
+    color: $muted-2;
+    white-space: nowrap;
+  }
+
+  &--green .recent-row__icon {
+    background: #ddf5e5;
+    color: #16a34a;
+  }
+
+  &--blue .recent-row__icon {
+    background: #e3edfd;
+    color: $blue-600;
+  }
+
+  &--amber .recent-row__icon {
+    background: #fff2e0;
+    color: $amber-500;
+  }
+}
+
+/* ---------------- Grid placement ----------------
+   DOM order (desktop): stats → perf → alerts → promo →
+   sales → activities → quick → recent.
+   Below 992px the order rules re-flow to match the
+   mobile/tablet inspo.                             */
+@media (max-width: $bp-lg-down) {
+  .stat {
+    order: 1;
+  }
+
+  .widget--perf {
+    order: 2;
+  }
+
+  .widget--quick {
+    order: 3;
+  }
+
+  .widget--activities {
+    order: 4;
+  }
+
+  .widget--recent {
+    order: 5;
+  }
+
+  .widget--alerts {
+    order: 6;
+  }
+
+  .promo {
+    order: 7;
+  }
+
+  .widget--sales {
+    order: 8;
+  }
+}
+
+@include from($bp-md) {
+  .stat {
+    grid-column: span 3;
+  }
+
+  .widget--perf {
+    grid-column: span 7;
+  }
+
+  .widget--quick {
+    grid-column: span 5;
+  }
+
+  .widget--activities {
+    grid-column: span 6;
+  }
+
+  .widget--recent {
+    grid-column: span 6;
+  }
+
+  .widget--alerts {
+    grid-column: span 6;
+  }
+
+  .promo {
+    grid-column: span 6;
+  }
+
+  .widget--sales {
+    grid-column: span 12;
+  }
+}
+
+@include from($bp-lg) {
+  .widget--quick,
+  .widget--recent {
+    display: none;
+  }
+
+  .widget--perf {
+    grid-column: span 5;
+  }
+
+  .widget--alerts {
+    grid-column: span 4;
+  }
+
+  .promo {
+    grid-column: span 3;
+  }
+
+  /* Stacked full-width on 992–1279px laptops so the sales
+     table never wraps; side-by-side from 1280px up. */
+  .widget--sales {
+    grid-column: span 12;
+  }
+
+  .widget--activities {
+    grid-column: span 12;
+  }
+}
+
+@include from($bp-2xl) {
+  .widget--sales {
+    grid-column: span 6;
+  }
+
+  .widget--activities {
+    grid-column: span 6;
+  }
+}
+
+/* Slightly tighter stat text on small phones */
+@media (max-width: $bp-sm-down) {
+  .stat {
+    gap: 10px;
+    padding: 13px 12px;
+
+    &__value {
+      font-size: 19px;
+    }
+
+    &__icon {
+      width: 38px;
+      height: 38px;
+      font-size: 17px;
+      border-radius: 11px;
+    }
+  }
+}

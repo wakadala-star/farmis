@@ -1,0 +1,170 @@
+<div class="shell" [class.is-collapsed]="collapsed()">
+  @if (drawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeDrawer()" aria-hidden="true"></div>
+  }
+
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar" [class.is-open]="drawerOpen()">
+    <div class="sidebar__head">
+      <app-brand />
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Main navigation">
+      @for (item of navItems; track item.label) {
+        @if (item.link) {
+          <a
+            class="nav-item"
+            [routerLink]="item.link"
+            routerLinkActive="nav-item--active"
+            [title]="item.label"
+            (click)="closeDrawer()"
+          >
+            <i [class]="item.icon"></i>
+            <span class="nav-item__label">{{ item.label }}</span>
+          </a>
+        } @else {
+          <span
+            class="nav-item nav-item--soon"
+            [title]="item.label + ' — coming soon'"
+          >
+            <i [class]="item.icon"></i>
+            <span class="nav-item__label">{{ item.label }}</span>
+            <span class="badge-soon">Soon</span>
+          </span>
+        }
+      }
+    </nav>
+
+    <div class="sidebar__foot">
+      @if (userMenuOpen()) {
+        <div class="user-menu" role="menu">
+          <button
+            type="button"
+            class="user-menu__item"
+            role="menuitem"
+            (click)="userMenuOpen.set(false)"
+          >
+            <i class="fa-regular fa-user"></i>
+            <span>My Profile</span>
+            <span class="badge-soon">Soon</span>
+          </button>
+          <button
+            type="button"
+            class="user-menu__item user-menu__item--danger"
+            role="menuitem"
+            (click)="signOut()"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sign out</span>
+          </button>
+        </div>
+      }
+
+      <button
+        type="button"
+        class="user-card"
+        (click)="toggleUserMenu()"
+        [attr.aria-expanded]="userMenuOpen()"
+        aria-haspopup="menu"
+      >
+        <span class="avatar avatar--md">{{ auth.initials() }}</span>
+        <span class="user-card__meta">
+          <span class="user-card__name">{{ auth.fullName() }}</span>
+          <span class="user-card__role">{{ roleLabel() }}</span>
+        </span>
+        <i
+          class="fa-solid fa-chevron-up user-card__chev"
+          [class.is-open]="userMenuOpen()"
+        ></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="toggleSidebar()"
+        aria-label="Toggle navigation"
+      >
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <div class="topbar__title">
+        <h1 class="topbar__h1">Dashboard</h1>
+        <p class="topbar__sub">
+          <span class="topbar__sub-desk"
+            >Welcome back, {{ auth.fullName() }}! Here is your farm
+            overview.</span
+          >
+          <span class="topbar__sub-mob">Farm overview at a glance</span>
+        </p>
+      </div>
+
+      <div class="topbar__brand">
+        <app-brand [compact]="true" />
+      </div>
+
+      <div class="topbar__actions">
+        <span class="icon-btn bell" title="Notifications">
+          <i class="fa-regular fa-bell"></i>
+          <span class="bell__badge">2</span>
+        </span>
+
+        <div class="date-pill" title="Today">
+          <i class="fa-regular fa-calendar"></i>
+          <span>Mon, Nov 9, 2026</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+
+        <span class="avatar avatar--md" [title]="auth.fullName()">
+          {{ auth.initials() }}
+        </span>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- ============ Mobile bottom navigation ============ -->
+  <nav class="bottom-nav" aria-label="Quick navigation">
+    <a
+      class="bottom-nav__item bottom-nav__item--active"
+      routerLink="/dashboard"
+      title="Home"
+      (click)="closeDrawer()"
+    >
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </a>
+    <span class="bottom-nav__item" title="Coming soon">
+      <i class="fa-solid fa-seedling"></i>
+      <span>Crops</span>
+    </span>
+    <span class="bottom-nav__item" title="Coming soon">
+      <i class="fa-solid fa-cow"></i>
+      <span>Livestock</span>
+    </span>
+    <span class="bottom-nav__fab-slot">
+      <span class="bottom-nav__fab" title="Coming soon">
+        <i class="fa-solid fa-plus"></i>
+      </span>
+    </span>
+    <span class="bottom-nav__item" title="Coming soon">
+      <i class="fa-solid fa-warehouse"></i>
+      <span>Inventory</span>
+    </span>
+    <span class="bottom-nav__item" title="Coming soon">
+      <i class="fa-solid fa-chart-column"></i>
+      <span>Reports</span>
+    </span>
+    <span class="bottom-nav__item" title="Coming soon">
+      <i class="fa-solid fa-ellipsis"></i>
+      <span>More</span>
+    </span>
+  </nav>
+</div>

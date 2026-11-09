@@ -1,0 +1,434 @@
+/* ============================================================
+   FARMIS — base reset, typography & shared primitives
+   ============================================================ */
+@use 'tokens' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: $ink;
+  background: $page;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d5dad5;
+  border-radius: 999px;
+  border: 3px solid $page;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------------- Brand ---------------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  &__mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 17px;
+    background: linear-gradient(135deg, $green-600, $green-400);
+    box-shadow: 0 6px 14px rgba(27, 138, 63, 0.28);
+    flex: 0 0 auto;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+  }
+
+  &__name {
+    font-size: 16.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: $ink;
+  }
+
+  &__tag {
+    font-size: 10.5px;
+    color: $muted;
+    white-space: nowrap;
+  }
+
+  &--light {
+    .brand__mark {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: none;
+    }
+
+    .brand__name {
+      color: #fff;
+    }
+
+    .brand__tag {
+      color: rgba(255, 255, 255, 0.75);
+    }
+  }
+
+  &--compact {
+    .brand__mark {
+      width: 33px;
+      height: 33px;
+      font-size: 15px;
+      border-radius: 10px;
+    }
+
+    .brand__name {
+      font-size: 15px;
+    }
+
+    .brand__tag {
+      display: none;
+    }
+  }
+}
+
+/* Real logo image present: a light tile keeps the green leaves
+   readable everywhere; the green gradient tile is only the
+   icon fallback (image missing). */
+.brand--img .brand__mark {
+  background: #f3f9f4;
+  border: 1px solid #e3efe6;
+  box-shadow: none;
+  padding: 4px;
+}
+
+.brand--light.brand--img .brand__mark {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: transparent;
+}
+
+/* ---------------- Primitives ---------------- */
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $ink-2;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #f1f4f1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $green-600;
+    outline-offset: 2px;
+  }
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: $green-100;
+  color: $green-700;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+  overflow: hidden;
+  user-select: none;
+
+  &--sm {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  &--md {
+    width: 38px;
+    height: 38px;
+    font-size: 13px;
+  }
+}
+
+.badge-soon {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8f998f;
+  background: #f2f4f2;
+  border: 1px solid #e5e9e5;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: $green-600;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: default;
+
+  i {
+    font-size: 10.5px;
+  }
+}
+
+/* ---------------- Buttons ---------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 46px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.15s ease,
+    background 0.15s ease;
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    width: 100%;
+    background: linear-gradient(135deg, $green-600, $green-700);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(27, 138, 63, 0.28);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, $green-700, $green-900);
+      box-shadow: 0 10px 22px rgba(27, 138, 63, 0.34);
+    }
+  }
+}
+
+/* ---------------- Forms ---------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+
+  &__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $ink-2;
+  }
+
+  &__box {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__icon {
+    position: absolute;
+    left: 14px;
+    color: $muted-2;
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  &__reveal {
+    position: absolute;
+    right: 6px;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    background: transparent;
+    color: $muted;
+    border-radius: 8px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+
+    &:hover {
+      background: #f1f4f1;
+      color: $ink-2;
+    }
+  }
+
+  &__error {
+    font-size: 12px;
+    color: #dc2626;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: $muted;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    i {
+      color: $green-600;
+    }
+  }
+}
+
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px 0 40px;
+  border: 1px solid #dde2dd;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  color: $ink;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: #aab1ab;
+  }
+
+  &:focus {
+    outline: 0;
+    border-color: $green-500;
+    box-shadow: 0 0 0 4px rgba(38, 163, 90, 0.14);
+  }
+
+  &.is-invalid {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+  }
+}
+
+.input--pw {
+  padding-right: 46px;
+}
+
+.select {
+  width: 100%;
+  height: 46px;
+  padding: 0 38px 0 40px;
+  border: 1px solid #dde2dd;
+  border-radius: 12px;
+  background-color: #fff;
+  font-size: 14px;
+  color: $ink;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+
+  &:focus {
+    outline: 0;
+    border-color: $green-500;
+    box-shadow: 0 0 0 4px rgba(38, 163, 90, 0.14);
+  }
+
+  &.is-invalid {
+    border-color: #ef4444;
+  }
+}
+
+.form-alert {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 18px;
+
+  i {
+    margin-top: 2px;
+  }
+
+  &--error {
+    background: $red-100;
+    color: #b91c1c;
+    border: 1px solid #f8cfcf;
+  }
+
+  &--success {
+    background: $green-50;
+    color: #14682f;
+    border: 1px solid $green-100;
+  }
+}

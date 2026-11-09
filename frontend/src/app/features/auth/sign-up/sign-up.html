@@ -1,0 +1,173 @@
+<section class="auth-card">
+    <div class="auth-card__brand">
+      <app-brand [compact]="true" />
+    </div>
+
+    <header class="auth-card__head">
+      <h1 class="auth-card__title">Create your account</h1>
+      <p class="auth-card__sub">Join FARMIS to run your farm operations.</p>
+    </header>
+
+    @if (error()) {
+      <div class="form-alert form-alert--error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      <div class="field">
+        <label class="field__label" for="signup-name">Full name</label>
+        <div class="field__box">
+          <i class="fa-regular fa-user field__icon"></i>
+          <input
+            id="signup-name"
+            type="text"
+            class="input"
+            [class.is-invalid]="invalid('fullName')"
+            placeholder="e.g. Wakadala Mark"
+            formControlName="fullName"
+            autocomplete="name"
+          />
+        </div>
+        @if (invalid('fullName')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Please enter your full name.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="signup-email">Email address</label>
+        <div class="field__box">
+          <i class="fa-regular fa-envelope field__icon"></i>
+          <input
+            id="signup-email"
+            type="email"
+            class="input"
+            [class.is-invalid]="invalid('email')"
+            placeholder="you@farm.com"
+            formControlName="email"
+            autocomplete="email"
+          />
+        </div>
+        @if (invalid('email')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Please enter a valid email address.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="signup-role">Role</label>
+        <div class="field__box">
+          <i [class]="roleIcon() + ' field__icon'"></i>
+          <select
+            id="signup-role"
+            class="select"
+            [class.is-invalid]="invalid('role')"
+            formControlName="role"
+            (change)="onRoleChange()"
+          >
+            <option value="" disabled>Select your role</option>
+            @for (option of roleOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        @if (invalid('role')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Please choose the role you will use on the farm.
+          </span>
+        } @else {
+          <span class="field__hint">
+            <i class="fa-solid fa-circle-info"></i>
+            Your role decides which dashboard you access after signing in.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="signup-password">Password</label>
+        <div class="field__box">
+          <i class="fa-solid fa-lock field__icon"></i>
+          <input
+            id="signup-password"
+            [type]="hidePassword() ? 'password' : 'text'"
+            class="input input--pw"
+            [class.is-invalid]="invalid('password')"
+            placeholder="At least 6 characters"
+            formControlName="password"
+            autocomplete="new-password"
+          />
+          <button
+            type="button"
+            class="field__reveal"
+            (click)="togglePassword()"
+            [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          >
+            <i
+              class="fa-regular"
+              [class.fa-eye]="hidePassword()"
+              [class.fa-eye-slash]="!hidePassword()"
+            ></i>
+          </button>
+        </div>
+        @if (invalid('password')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Password must be at least 6 characters.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="signup-confirm">Confirm password</label>
+        <div class="field__box">
+          <i class="fa-solid fa-lock field__icon"></i>
+          <input
+            id="signup-confirm"
+            [type]="hidePassword() ? 'password' : 'text'"
+            class="input input--pw"
+            [class.is-invalid]="invalid('confirm') || mismatched()"
+            placeholder="Repeat your password"
+            formControlName="confirm"
+            autocomplete="new-password"
+          />
+        </div>
+        @if (mismatched()) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Passwords do not match.
+          </span>
+        } @else if (invalid('confirm')) {
+          <span class="field__error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            Please confirm your password.
+          </span>
+        }
+      </div>
+
+      <p class="auth-terms">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>
+          <strong>Role-based access.</strong> Owners see the full farm
+          dashboard; supervisor and worker workspaces arrive in the next
+          release.
+        </span>
+      </p>
+
+      <button class="btn btn--primary" type="submit">
+        <span>Create Account</span>
+        <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      Already have an account?
+      <a routerLink="/signin">Sign in</a>
+    </p>
+  </section>

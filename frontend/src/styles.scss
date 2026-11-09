@@ -1,0 +1,9 @@
+/* ============================================================
+   FARMIS — global styles
+   Font Awesome is bundled via angular.json (styles array).
+   ============================================================ */
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/auth';
+@use 'styles/shell';
+@use 'styles/dashboard';

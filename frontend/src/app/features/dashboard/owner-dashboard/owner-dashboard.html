@@ -1,0 +1,192 @@
+<section class="dash-grid" aria-label="Farm overview">
+  <!-- ============ Stat cards ============ -->
+  @for (stat of stats; track stat.label) {
+    <article [class]="'stat stat--' + stat.tone">
+      <span class="stat__icon"><i [class]="stat.icon"></i></span>
+      <div class="stat__body">
+        <div class="stat__row">
+          <span class="stat__value">{{ stat.value }}</span>
+          <span class="stat__trend">
+            <i class="fa-solid fa-arrow-up"></i>{{ stat.trend }}
+          </span>
+        </div>
+        <span class="stat__label">{{ stat.label }}</span>
+      </div>
+    </article>
+  }
+
+  <!-- ============ Farm performance ============ -->
+  <article class="widget widget--perf">
+    <header class="widget__head">
+      <i class="fa-solid fa-chart-column widget__icon"></i>
+      <h2 class="widget__title">Farm Performance</h2>
+      <div class="widget__action">
+        <span class="widget__viewall-mobile view-all">
+          View All <i class="fa-solid fa-arrow-right"></i>
+        </span>
+        <div class="select-mini-wrap">
+          <select class="select-mini" aria-label="Chart period">
+            <option>This Year</option>
+            <option>Last Year</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <div class="chart-legend">
+      <span><i class="is-crops"></i> Crops</span>
+      <span><i class="is-livestock"></i> Livestock</span>
+    </div>
+
+    <div class="widget__body">
+      <app-performance-chart [data]="series" [max]="3000" />
+    </div>
+  </article>
+
+  <!-- ============ Alerts ============ -->
+  <article class="widget widget--alerts">
+    <header class="widget__head">
+      <i class="fa-solid fa-bell widget__icon"></i>
+      <h2 class="widget__title">Alerts &amp; Notifications</h2>
+      <div class="widget__action">
+        <span class="view-all" title="Coming soon">
+          View All <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @for (alert of alerts; track alert.title) {
+        <div [class]="'alert-row alert-row--' + alert.tone">
+          <span class="alert-row__icon"><i [class]="alert.icon"></i></span>
+          <div class="alert-row__main">
+            <p class="alert-row__title">{{ alert.title }}</p>
+            <p class="alert-row__text">{{ alert.text }}</p>
+          </div>
+          <span class="alert-row__time">{{ alert.time }}</span>
+        </div>
+      }
+    </div>
+  </article>
+
+  <!-- ============ Promo ============ -->
+  <aside class="promo" aria-label="Growing a productive farm">
+    <i class="fa-solid fa-leaf promo__leaf" aria-hidden="true"></i>
+    <div class="promo__content">
+      <h2 class="promo__title">Growing a Productive Farm</h2>
+      <p class="promo__sub">Together with FARMIS</p>
+      <span class="promo__btn" title="Coming soon">
+        Learn More <i class="fa-solid fa-arrow-right"></i>
+      </span>
+    </div>
+  </aside>
+
+  <!-- ============ Recent sales ============ -->
+  <article class="widget widget--sales">
+    <header class="widget__head">
+      <i class="fa-solid fa-cart-shopping widget__icon"></i>
+      <h2 class="widget__title">Recent Sales</h2>
+      <div class="widget__action">
+        <span class="view-all" title="Coming soon">
+          View All <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      <table class="sales-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Item</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sale of sales; track sale.date) {
+            <tr>
+              <td class="is-date" data-label="Date">{{ sale.date }}</td>
+              <td class="is-strong" data-label="Customer">{{ sale.customer }}</td>
+              <td data-label="Item">{{ sale.item }}</td>
+              <td class="is-strong is-amount" data-label="Amount">{{ sale.amount }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <!-- ============ Upcoming activities ============ -->
+  <article class="widget widget--activities">
+    <header class="widget__head">
+      <i class="fa-regular fa-calendar widget__icon"></i>
+      <h2 class="widget__title">Upcoming Activities</h2>
+      <div class="widget__action">
+        <span class="view-all" title="Coming soon">
+          View All <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @for (activity of activities; track activity.title) {
+        <div class="activity">
+          <div class="activity__date">
+            <span class="activity__day">{{ activity.day }}</span>
+            <span class="activity__month">{{ activity.month }}</span>
+          </div>
+          <div class="activity__main">
+            <p class="activity__title">{{ activity.title }}</p>
+            <p class="activity__sub">{{ activity.sub }}</p>
+          </div>
+          <span [class]="'chip chip--' + activity.chipTone">{{ activity.chip }}</span>
+        </div>
+      }
+    </div>
+  </article>
+
+  <!-- ============ Quick actions (tablet & mobile) ============ -->
+  <article class="widget widget--quick">
+    <header class="widget__head">
+      <i class="fa-solid fa-bolt widget__icon"></i>
+      <h2 class="widget__title">Quick Actions</h2>
+      <div class="widget__action">
+        <span class="view-all" title="Coming soon">
+          View All <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      <div class="quick-grid">
+        @for (action of quickActions; track action.label) {
+          <div class="quick-action" [title]="action.label + ' — coming soon'">
+            <i [class]="action.icon"></i>
+            <span>{{ action.label }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </article>
+
+  <!-- ============ Recent activity (tablet & mobile) ============ -->
+  <article class="widget widget--recent">
+    <header class="widget__head">
+      <i class="fa-solid fa-list-check widget__icon"></i>
+      <h2 class="widget__title">Recent Activity</h2>
+    </header>
+
+    <div class="widget__body">
+      @for (row of recent; track row.title) {
+        <div [class]="'recent-row recent-row--' + row.tone">
+          <span class="recent-row__icon"><i [class]="row.icon"></i></span>
+          <div class="recent-row__main">
+            <p class="recent-row__title">{{ row.title }}</p>
+          </div>
+          <span class="recent-row__time">{{ row.time }}</span>
+        </div>
+      }
+    </div>
+  </article>
+</section>

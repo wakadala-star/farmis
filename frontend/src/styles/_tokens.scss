@@ -1,0 +1,60 @@
+/* ============================================================
+   FARMIS design tokens — colours sampled from the UI inspo
+   ============================================================ */
+
+// Brand greens
+$green-950: #07351b;
+$green-900: #0f5132;
+$green-700: #157a3c;
+$green-600: #1b8a3f;
+$green-500: #26a35a;
+$green-400: #3fbf70;
+$green-100: #dcf3e4;
+$green-50: #effaf3;
+
+// Accents (stat cards, alerts, chips)
+$blue-600: #3b82f6;
+$blue-100: #e6effd;
+$amber-600: #d9a30c;
+$amber-100: #faf4d8;
+$amber-500: #f59e0b;
+$purple-600: #7b68e0;
+$purple-100: #f0edfb;
+$red-600: #dc2626;
+$red-100: #fdecec;
+
+// Neutrals
+$ink: #0f172a;
+$ink-2: #1f2937;
+$muted: #6b7280;
+$muted-2: #9ca3af;
+$line: #e6eae6;
+$line-soft: #f1f3f1;
+$page: #f5f7f5;
+$card: #ffffff;
+
+// Shape & elevation
+$radius: 16px;
+$radius-sm: 10px;
+$shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+$shadow-pop: 0 16px 40px rgba(15, 23, 42, 0.14);
+
+// Layout
+$sidebar-w: 274px;
+$sidebar-w-compact: 78px;
+
+// Breakpoints
+$bp-md: 768px;
+$bp-lg: 992px;
+$bp-xl: 1200px;
+$bp-auth: 960px;
+$bp-2xl: 1280px;
+$bp-md-down: 767.98px;
+$bp-lg-down: 991.98px;
+$bp-sm-down: 575.98px;
+
+@mixin from($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
