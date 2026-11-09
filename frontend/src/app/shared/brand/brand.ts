@@ -10,7 +10,7 @@ import { Component, Input, signal } from '@angular/core';
   template: `
     <span class="brand__mark" aria-hidden="true">
       @if (!logoFailed()) {
-        <img src="/images/logo.png" alt="" (error)="logoFailed.set(true)" />
+        <img src="images/logo.png" alt="" (error)="logoFailed.set(true)" />
       } @else {
         <i class="fa-solid fa-leaf"></i>
       }

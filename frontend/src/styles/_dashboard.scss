@@ -397,7 +397,11 @@
   justify-content: flex-end;
   padding: 20px;
   background-color: #14682f;
-  background-image: url('/images/promo-farm.jpg'),
+  // The photo is injected as an inline CSS variable (owner-dashboard) so
+  // its relative URL resolves against the document base href — this way
+  // it works at the domain root AND under the /farmis/ GitHub Pages
+  // subpath. The gradient below stays as the visible fallback.
+  background-image: var(--promo-img, none),
     linear-gradient(160deg, #0b3f24 0%, #157a3c 55%, #35b564 100%);
   background-size: cover;
   background-position: center;

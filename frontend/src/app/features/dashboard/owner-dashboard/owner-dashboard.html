@@ -70,7 +70,11 @@
   </article>
 
   <!-- ============ Promo ============ -->
-  <aside class="promo" aria-label="Growing a productive farm">
+  <aside
+    class="promo"
+    [ngStyle]="{ '--promo-img': promoImage }"
+    aria-label="Growing a productive farm"
+  >
     <i class="fa-solid fa-leaf promo__leaf" aria-hidden="true"></i>
     <div class="promo__content">
       <h2 class="promo__title">Growing a Productive Farm</h2>

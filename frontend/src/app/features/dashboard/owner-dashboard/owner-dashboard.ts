@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { NgStyle } from '@angular/common';
 import { ChartPoint, PerformanceChart } from '../../../shared/performance-chart/performance-chart';
 
 /**
@@ -9,10 +10,17 @@ import { ChartPoint, PerformanceChart } from '../../../shared/performance-chart/
  */
 @Component({
   selector: 'app-owner-dashboard',
-  imports: [PerformanceChart],
+  imports: [PerformanceChart, NgStyle],
   templateUrl: './owner-dashboard.html',
 })
 export class OwnerDashboard {
+  /**
+   * Promo card photo, injected inline so the relative URL resolves
+   * against the document base href (domain root and /farmis/ both work).
+   * Falls back to the CSS gradient when the file is not uploaded yet.
+   */
+  readonly promoImage = 'url(images/promo-farm.jpg)';
+
   readonly stats = [
     { icon: 'fa-solid fa-cow', value: '120', label: 'Total Livestock', trend: '5%', tone: 'green' },
     { icon: 'fa-solid fa-kiwi-bird', value: '2,500', label: 'Poultry', trend: '8%', tone: 'blue' },
