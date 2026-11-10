@@ -17,7 +17,7 @@ import { Component, Input, signal } from '@angular/core';
     </span>
     <span class="brand__text">
       <span class="brand__name">FARMIS</span>
-      <span class="brand__tag">Mkwasi Agri Business</span>
+      <span class="brand__tag">Mukwasi Agri Business</span>
     </span>
   `,
   host: {
