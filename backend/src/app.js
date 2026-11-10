@@ -9,9 +9,10 @@ const app = express();
 
 app.disable('x-powered-by');
 
-// Behind Render's reverse proxy: trust the first hop so req.ip reflects
-// the real client (X-Forwarded-For) instead of the proxy's address.
-app.set('trust proxy', 1);
+// Behind Render's reverse proxy: the X-Forwarded-For chain ends with an
+// internal (private) hop, so trust private ranges too — req.ip then walks
+// back to the real client address instead of the proxy's.
+app.set('trust proxy', ['loopback', 'uniquelocal']);
 
 // Credentialed CORS — only origins listed in CLIENT_ORIGIN may send cookies.
 app.use(
