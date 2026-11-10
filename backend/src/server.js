@@ -6,7 +6,7 @@ const server = app.listen(env.port, () => {
   console.log(`[farmis-api] listening on port ${env.port} (${env.nodeEnv})`);
   if (env.pg.connectionString) {
     const url = new URL(env.pg.connectionString);
-    console.log(`[farmis-api] database: ${url.user}@${url.host}${url.pathname}`);
+    console.log(`[farmis-api] database: ${url.username}@${url.host}${url.pathname}`);
   } else {
     console.log(`[farmis-api] database: ${env.pg.user}@${env.pg.host}:${env.pg.port}/${env.pg.database}`);
   }

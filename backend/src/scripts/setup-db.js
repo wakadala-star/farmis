@@ -95,7 +95,7 @@ async function main() {
   const useConnectionString = Boolean(env.pg.connectionString);
   if (useConnectionString) {
     const url = new URL(env.pg.connectionString);
-    console.log(`[setup] target (DATABASE_URL): ${url.user}@${url.host}:${url.port || 5432}${url.pathname}`);
+    console.log(`[setup] target (DATABASE_URL): ${url.username}@${url.host}:${url.port || 5432}${url.pathname}`);
   } else {
     console.log(`[setup] target: ${env.pg.user}@${env.pg.host}:${env.pg.port}/${env.pg.database}`);
     await ensureDatabase();
