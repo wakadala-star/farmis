@@ -25,6 +25,8 @@ export interface Session {
 export interface AuthResult {
   ok: boolean;
   message: string;
+  /** Returned by signin — the session profile set by the backend. */
+  session?: Session;
 }
 
 export const ROLE_LABELS: Record<Role, string> = {

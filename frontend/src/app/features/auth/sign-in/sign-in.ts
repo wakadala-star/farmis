@@ -5,10 +5,10 @@ import { AuthService } from '../../../core/auth.service';
 import { Brand } from '../../../shared/brand/brand';
 
 /**
- * Sign-in screen — a clean form with real validation. Accounts are
- * checked against the mock auth service (demo logins live in the
- * README); after sign-in the router sends each role to its own
- * workspace. No backend call yet.
+ * Sign-in screen — a clean form with real validation. Credentials go
+ * to the backend (POST /api/auth/signin), which sets an httpOnly JWT
+ * cookie; after sign-in the router sends each role to its own
+ * workspace.
  */
 @Component({
   selector: 'app-sign-in',
@@ -50,14 +50,15 @@ export class SignIn implements OnInit {
     this.hidePassword.update((hidden) => !hidden);
   }
 
-  protected onSubmit(): void {
+  protected async onSubmit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
+    this.error.set('');
     const { email, password } = this.form.getRawValue();
-    const result = this.auth.signIn(email, password);
+    const result = await this.auth.signIn(email, password);
 
     if (result.ok) {
       const redirect =

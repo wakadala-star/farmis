@@ -38,28 +38,46 @@ day's work — all through role-based workspaces.
   navigation with centre FAB on mobile
 
 Role-based routing is live: each role lands on, and is locked to, its own
-workspace. The mock data layer (`FarmDataService`) is shared through
-`localStorage`, so tasks, clock-ins and approvals flow between roles during
-the demo.
+workspace. Sign-in/sign-up talk to the real backend API (JWT + bcrypt);
+the farm data itself is still a mock layer (`FarmDataService`) shared
+through `localStorage`, so tasks, clock-ins and approvals flow between
+roles during the demo.
 
 ## Tech stack
 
 - Angular 22 (standalone components, signals, new control flow)
+- Node.js 24 + Express 5 backend (`backend/`) with JWT (httpOnly cookie)
+  authentication, bcrypt password hashing and role/department authorization
+- PostgreSQL (`mukwasi_agri_business`) — 12 tables, schema + demo users
+  applied by `npm run setup-db`
 - SCSS design-token system · Font Awesome 7 · Inter
-- Mock authentication via `localStorage` (`AuthService`) and mock farm data
-  via `FarmDataService` — the two single places to swap in real HTTP calls
-  when the backend arrives
+- Mock farm data via `FarmDataService` — the single place left to swap in
+  real HTTP calls once the API grows beyond auth
 
 ## Getting started
 
+Requires PostgreSQL running locally (see `backend/.env`).
+
 ```bash
+# 1. API — creates the DB, applies the schema, seeds the demo users
+cd backend
+npm install
+npm run setup-db
+npm start            # http://localhost:4000/api/health
+
+# 2. UI — in a second terminal
 cd frontend
 npm install
-npm start        # http://localhost:4200 (opens on /signin)
-npm run build    # production build → dist/frontend/browser
+npm start            # http://localhost:4200 (opens on /signin)
+npm run build        # production build → dist/frontend/browser
 ```
 
-**Demo accounts** (sign-in is a clean form — enter any of these):
+The frontend reaches the API at `http://localhost:4000/api`
+(`frontend/src/environments/environment.ts`); the production build uses
+`environment.prod.ts` instead (see Deployment).
+
+**Demo accounts** (seeded into the database by `npm run setup-db` — sign-in
+is a clean form, password `Farmis123` for all five):
 
 | Role | Email | Password | Lands on |
 | --- | --- | --- | --- |
@@ -70,15 +88,21 @@ npm run build    # production build → dist/frontend/browser
 | Livestock Worker | `livestock.worker@farmis.com` | `Farmis123` | `/worker` |
 
 Sign-up also works: new supervisor/worker accounts choose a department and
-route to the matching workspace.
+route to the matching workspace. Owner sign-up is restricted — the first
+owner bootstraps, later owners are created by an existing owner session
+(see `backend/README.md`).
 
 ## Project structure
 
 ```
+backend/            Express API (auth + authorization)
+├── db/schema.sql   PostgreSQL schema (12 tables + role/department seeds)
+├── src/            routes, controllers, middleware, config
+└── scripts/ …      npm run setup-db (schema + demo users)
 frontend/
 ├── public/images/        logo, favicon, promo photo, placeholder uploads
 ├── src/app/
-│   ├── core/             AuthService, FarmDataService (mock DB), guards, models
+│   ├── core/             AuthService (HTTP), api.ts, guards, models
 │   ├── features/         auth, owner dashboard + crops/livestock,
 │   │                     supervisor (6 screens), worker (4 screens)
 │   ├── layouts/          auth layout, owner shell, supervisor shell,
@@ -94,6 +118,22 @@ placeholder; see the [assets README](frontend/public/images/README.md).
 
 ## Deployment
 
-`.github/workflows/deploy-pages.yml` builds the app with a `--base-href`
-matching the repository name and publishes it to **GitHub Pages** on every
-push. Deep links work via a generated `404.html` SPA fallback.
+Two services, both auto-deployed from `main`:
+
+| Piece | Where | Trigger |
+| --- | --- | --- |
+| Frontend (Angular) | **GitHub Pages** — https://wakadala-star.github.io/farmis/ | `.github/workflows/deploy-pages.yml` on pushes touching `frontend/` |
+| Backend (Express) | **Render** free web service — https://farmis-backend.onrender.com | `render.yaml` blueprint, builds only `backend/` |
+| Database (PostgreSQL) | **Neon** (serverless Postgres) | connection string stored as `DATABASE_URL` on Render |
+
+The Pages build uses `environment.prod.ts`, which points the app at the
+Render API; the backend allows that origin via `CLIENT_ORIGIN` and sets the
+session cookie `SameSite=None; Secure` (the two sites are cross-site).
+Deep links work via a generated `404.html` SPA fallback.
+
+First-time backend setup on Render/Neon: create the Neon project, run
+`npm run setup-db` against its connection string (locally, with
+`DATABASE_URL=…`), then create the Blueprint in Render — it prompts for
+`DATABASE_URL` and generates `JWT_SECRET`. See `backend/README.md` for
+details. Note the free Render service sleeps after ~15 min idle, so the
+first request takes ~50 s to wake up.

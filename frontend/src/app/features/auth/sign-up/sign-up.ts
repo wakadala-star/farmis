@@ -33,9 +33,8 @@ const ROLE_ICONS: Record<Role, string> = {
 };
 
 /**
- * Sign-up screen. Accounts are "stored" in localStorage for now —
- * the form, validation and flow mirror exactly what the backend
- * will do later. Successful sign-up routes to the sign-in form.
+ * Sign-up screen. The form posts to the backend (POST /api/auth/signup);
+ * on success it routes to the sign-in form.
  */
 @Component({
   selector: 'app-sign-up',
@@ -109,14 +108,15 @@ export class SignUp {
     this.showDepartment.set(role === 'supervisor' || role === 'worker');
   }
 
-  protected onSubmit(): void {
+  protected async onSubmit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
+    this.error.set('');
     const { fullName, email, password, role, department } = this.form.getRawValue();
-    const result = this.auth.signUp({
+    const result = await this.auth.signUp({
       fullName: fullName.trim(),
       email: email.trim(),
       password,
