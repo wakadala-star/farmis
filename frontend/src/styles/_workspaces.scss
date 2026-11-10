@@ -1,7 +1,7 @@
 /* ============================================================
    Supervisor & worker workspaces:
    page shells, list rows, status chips, mini buttons, report
-   preview, the worker clock dropdown and the sign-in demo chips.
+   preview and the worker clock dropdown.
    ============================================================ */
 @use 'tokens' as *;
 
@@ -43,6 +43,18 @@
 
     strong {
       font-weight: 800;
+    }
+  }
+
+  /* At-a-glance tile rows: size to the tiles the row actually holds,
+     so the supervisor home row's 4th tile sits beside the others
+     instead of wrapping. Owner pages keep their fixed 3-up layout
+     outside .ws. */
+  .meta-row {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+
+    @media (max-width: $bp-md-down) {
+      grid-template-columns: 1fr;
     }
   }
 
