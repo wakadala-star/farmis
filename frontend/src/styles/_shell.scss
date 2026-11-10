@@ -524,6 +524,12 @@
   }
 }
 
+// Linked items (Home / Crops / Livestock) are real navigation
+a.bottom-nav__item {
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .bottom-nav__fab-slot {
   position: relative;
 }

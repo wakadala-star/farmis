@@ -1,0 +1,221 @@
+/* ============================================================
+   Owner management pages (Crops & Livestock):
+   context note, meta tiles, alerts + supervisor updates feed.
+   ============================================================ */
+@use 'tokens' as *;
+
+.mgmt {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  /* Supervisor-context note under the topbar */
+  &__note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 15px;
+    background: $green-50;
+    border: 1px solid $green-100;
+    border-radius: $radius;
+    color: $green-900;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.45;
+
+    i {
+      color: $green-600;
+      font-size: 14px;
+      flex: 0 0 auto;
+    }
+  }
+}
+
+/* ---------------- Meta tiles ---------------- */
+.meta-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: $bp-md-down) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meta-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius;
+  box-shadow: $shadow-card;
+  min-width: 0;
+
+  &__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+    flex: 0 0 auto;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__value {
+    font-size: 17px;
+    font-weight: 800;
+    color: $ink;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $muted;
+  }
+
+  &__hint {
+    font-size: 11px;
+    color: $muted-2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &--green .meta-tile__icon {
+    background: $green-50;
+    color: $green-600;
+  }
+
+  &--blue .meta-tile__icon {
+    background: $blue-100;
+    color: $blue-600;
+  }
+
+  &--amber .meta-tile__icon {
+    background: $amber-100;
+    color: $amber-600;
+  }
+}
+
+/* ---------------- Alerts + updates ---------------- */
+.mgmt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 16px;
+  align-items: stretch;
+
+  /* .widget spans 12 columns inside the dashboard grid — not here */
+  .widget {
+    grid-column: auto;
+  }
+
+  /* Same side-by-side breakpoint as the dashboard (1280px) */
+  @media (max-width: 1279.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.badge-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: $green-50;
+  border: 1px solid $green-100;
+  color: $green-700;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+}
+
+.widget__hint-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: $muted-2;
+  white-space: nowrap;
+}
+
+/* Supervisor update entries */
+.feed-row {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px dashed $line;
+
+  &:first-child {
+    padding-top: 2px;
+  }
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  &__when {
+    flex: 0 0 86px;
+    font-size: 11px;
+    font-weight: 700;
+    color: $muted-2;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+
+  &__main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 3px;
+  }
+
+  &__author {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: $ink;
+  }
+
+  &__tag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: $green-50;
+    border: 1px solid $green-100;
+    color: $green-700;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 13px;
+    color: $muted;
+    line-height: 1.5;
+  }
+
+  @media (max-width: $bp-md-down) {
+    flex-direction: column;
+    gap: 4px;
+
+    &__when {
+      flex: none;
+      padding-top: 0;
+    }
+  }
+}

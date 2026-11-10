@@ -1,5 +1,6 @@
 # Inspiration images & source assets — kept local, not pushed
 /images/
+/assets/
 
 # IDEs
 .idea/

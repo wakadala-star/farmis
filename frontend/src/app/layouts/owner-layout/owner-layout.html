@@ -93,13 +93,10 @@
       </button>
 
       <div class="topbar__title">
-        <h1 class="topbar__h1">Dashboard</h1>
+        <h1 class="topbar__h1">{{ topbar().title }}</h1>
         <p class="topbar__sub">
-          <span class="topbar__sub-desk"
-            >Welcome back, {{ auth.fullName() }}! Here is your farm
-            overview.</span
-          >
-          <span class="topbar__sub-mob">Farm overview at a glance</span>
+          <span class="topbar__sub-desk">{{ topbar().sub }}</span>
+          <span class="topbar__sub-mob">{{ topbar().mob }}</span>
         </p>
       </div>
 
@@ -133,22 +130,36 @@
   <!-- ============ Mobile bottom navigation ============ -->
   <nav class="bottom-nav" aria-label="Quick navigation">
     <a
-      class="bottom-nav__item bottom-nav__item--active"
+      class="bottom-nav__item"
       routerLink="/dashboard"
+      routerLinkActive="bottom-nav__item--active"
+      [routerLinkActiveOptions]="{ exact: true }"
       title="Home"
       (click)="closeDrawer()"
     >
       <i class="fa-solid fa-house"></i>
       <span>Home</span>
     </a>
-    <span class="bottom-nav__item" title="Coming soon">
+    <a
+      class="bottom-nav__item"
+      routerLink="/crops"
+      routerLinkActive="bottom-nav__item--active"
+      title="Crop Management"
+      (click)="closeDrawer()"
+    >
       <i class="fa-solid fa-seedling"></i>
       <span>Crops</span>
-    </span>
-    <span class="bottom-nav__item" title="Coming soon">
+    </a>
+    <a
+      class="bottom-nav__item"
+      routerLink="/livestock"
+      routerLinkActive="bottom-nav__item--active"
+      title="Livestock Management"
+      (click)="closeDrawer()"
+    >
       <i class="fa-solid fa-cow"></i>
       <span>Livestock</span>
-    </span>
+    </a>
     <span class="bottom-nav__fab-slot">
       <span class="bottom-nav__fab" title="Coming soon">
         <i class="fa-solid fa-plus"></i>

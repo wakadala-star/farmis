@@ -6,7 +6,7 @@ files with these exact names to replace them automatically:
 
 | File               | Where it is used                                |
 | ------------------ | ----------------------------------------------- |
-| `promo-farm.jpg`   | Dashboard promo card background (wide farm photo) |
+| `promo-farm.jpg`   | ✅ **uploaded** — dashboard promo card background (from `assets/…16.36.10.jpeg`, optimized) |
 | `logo.png`         | ✅ **uploaded** — FARMIS mark (auto-generated from `images/logo.jpg`, cropped + transparent) |
 | `avatar.png`       | Signed-in user avatar (initials until then)      |
 
