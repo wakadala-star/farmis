@@ -1,0 +1,159 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Create a daily report about the tasks you worked on — a few lines are
+      enough. Your supervisor reviews these when closing the day.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="ws__grid">
+    <!-- ============ Report form ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-clipboard widget__icon"></i>
+        <h2 class="widget__title">New Daily Report</h2>
+      </header>
+
+      <div class="widget__body">
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label class="field__label" for="dr-task">Task</label>
+            <div class="field__box">
+              <i class="fa-solid fa-list-check field__icon"></i>
+              <select
+                id="dr-task"
+                class="select"
+                [class.is-invalid]="invalid('task')"
+                formControlName="task"
+              >
+                <option value="" disabled>Which task did you work on?</option>
+                @for (task of tasks; track task.id) {
+                  <option [value]="task.title">{{ task.title }}</option>
+                }
+              </select>
+            </div>
+            @if (invalid('task')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Choose the task this report is about.
+              </span>
+            }
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field__label" for="dr-date">Date</label>
+              <div class="field__box">
+                <i class="fa-regular fa-calendar field__icon"></i>
+                <input
+                  id="dr-date"
+                  type="date"
+                  class="input"
+                  [class.is-invalid]="invalid('date')"
+                  formControlName="date"
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="dr-hours">Hours worked</label>
+              <div class="field__box">
+                <i class="fa-regular fa-clock field__icon"></i>
+                <input
+                  id="dr-hours"
+                  type="number"
+                  min="1"
+                  max="24"
+                  class="input"
+                  [class.is-invalid]="invalid('hours')"
+                  formControlName="hours"
+                />
+              </div>
+            </div>
+          </div>
+          @if (invalid('hours')) {
+            <span class="field__error field__error--block">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              Hours must be between 1 and 24.
+            </span>
+          }
+
+          <div class="field">
+            <label class="field__label" for="dr-summary">Summary</label>
+            <div class="field__box">
+              <i class="fa-regular fa-comment field__icon"></i>
+              <textarea
+                id="dr-summary"
+                class="textarea"
+                rows="4"
+                [class.is-invalid]="invalid('summary')"
+                placeholder="What did you accomplish on this task today?"
+                formControlName="summary"
+              ></textarea>
+            </div>
+            @if (invalid('summary')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Write at least a sentence (10 characters or more).
+              </span>
+            }
+          </div>
+
+          <button class="btn btn--primary" type="submit">
+            <span>Submit Report</span>
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ============ Filed reports ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-file-lines widget__icon"></i>
+        <h2 class="widget__title">My Reports</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ filed().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (report of filed(); track report.id) {
+          <div class="list-row list-row--stacked">
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ report.task }}</strong>
+                <span class="chip chip--blue">{{ report.hours }}h</span>
+                <span class="chip chip--neutral">{{
+                  fmtDay(report.date)
+                }}</span>
+              </p>
+              <p class="list-row__sub list-row__sub--wrap">
+                {{ report.summary }}
+              </p>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-regular fa-clipboard"></i>
+            You haven’t filed a report yet — submit the first one.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+</section>

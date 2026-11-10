@@ -1,0 +1,179 @@
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { filter } from 'rxjs';
+import { AuthService } from '../../core/auth.service';
+import { FarmDataService } from '../../core/farm-data.service';
+import {
+  DEPT_LABELS,
+  DEPT_SHORT,
+  Department,
+  ROLE_LABELS,
+} from '../../core/models';
+import { Brand } from '../../shared/brand/brand';
+
+interface NavItem {
+  label: string;
+  icon: string;
+  link: string;
+}
+
+/** Topbar heading + subtitle for the active supervisor page. */
+interface PageMeta {
+  title: string;
+  sub: string;
+  mob: string;
+}
+
+/**
+ * Supervisor application shell — shared by the crop and livestock
+ * supervisors (the session's department scopes every screen).
+ *
+ * Six working modules: Dashboard, Tasks, Reports, Attendance,
+ * Transactions and Workers. Sign out is fully wired to the mock
+ * auth service.
+ */
+@Component({
+  selector: 'app-supervisor-layout',
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand],
+  templateUrl: './supervisor-layout.html',
+})
+export class SupervisorLayout {
+  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly data = inject(FarmDataService);
+
+  readonly drawerOpen = signal(false);
+  readonly collapsed = signal(false);
+  readonly userMenuOpen = signal(false);
+
+  readonly dept = computed<Department>(() => this.auth.department() ?? 'crops');
+  readonly deptLabel = computed(() => DEPT_LABELS[this.dept()]);
+  readonly deptShort = computed(() => DEPT_SHORT[this.dept()]);
+
+  readonly roleLabel = computed(
+    () => `${ROLE_LABELS['supervisor']} · ${DEPT_SHORT[this.dept()]}`,
+  );
+
+  /** Badge on the bell: everything still waiting for this supervisor. */
+  readonly pendingCount = computed(
+    () =>
+      this.data.pendingAttendance(this.dept()).length +
+      this.data.pendingTransactions(this.dept()).length,
+  );
+
+  /** Active top-level path, kept in sync with the router. */
+  private readonly path = signal('');
+
+  /** Heading + subtitle shown in the topbar for the active page. */
+  readonly topbar = computed<PageMeta>(() => {
+    const name = this.auth.fullName();
+    const dept = this.deptShort();
+    switch (this.path()) {
+      case '/supervisor/tasks':
+        return {
+          title: 'Tasks',
+          sub: `Welcome back, ${name}! Assign and track work for the ${dept} team.`,
+          mob: 'Assign & track tasks',
+        };
+      case '/supervisor/reports':
+        return {
+          title: 'Reports',
+          sub: 'Generate reports on the farm’s daily operations.',
+          mob: 'Operations reports',
+        };
+      case '/supervisor/attendance':
+        return {
+          title: 'Attendance',
+          sub: `Confirm your workers’ clock-ins and clock-outs, ${name}.`,
+          mob: 'Confirm clock-ins & outs',
+        };
+      case '/supervisor/transactions':
+        return {
+          title: 'Transactions',
+          sub: 'Approve credit transactions submitted by workers.',
+          mob: 'Approve transactions',
+        };
+      case '/supervisor/workers':
+        return {
+          title: 'Workers',
+          sub: 'Recruit, assign tasks and manage your department team.',
+          mob: 'Manage your workers',
+        };
+      default:
+        return {
+          title: 'Supervisor Dashboard',
+          sub: `Welcome back, ${name}! Here is your ${dept} department at a glance.`,
+          mob: 'Department at a glance',
+        };
+    }
+  });
+
+  readonly navItems: NavItem[] = [
+    { label: 'Dashboard', icon: 'fa-solid fa-gauge-high', link: '/supervisor/dashboard' },
+    { label: 'Tasks', icon: 'fa-solid fa-list-check', link: '/supervisor/tasks' },
+    { label: 'Reports', icon: 'fa-solid fa-file-lines', link: '/supervisor/reports' },
+    { label: 'Attendance', icon: 'fa-solid fa-clock', link: '/supervisor/attendance' },
+    { label: 'Transactions', icon: 'fa-solid fa-money-bill-transfer', link: '/supervisor/transactions' },
+    { label: 'Workers', icon: 'fa-solid fa-users', link: '/supervisor/workers' },
+  ];
+
+  constructor() {
+    this.path.set(this.pathOf(this.router.url));
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((e) => this.path.set(this.pathOf(e.urlAfterRedirects)));
+  }
+
+  /** Hamburger: collapses the sidebar on desktop, opens the drawer on
+   *  tablets and phones. */
+  toggleSidebar(): void {
+    if (this.isWide()) {
+      this.collapsed.update((open) => !open);
+    } else {
+      this.drawerOpen.update((open) => !open);
+    }
+  }
+
+  closeDrawer(): void {
+    this.drawerOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  signOut(): void {
+    this.userMenuOpen.set(false);
+    this.drawerOpen.set(false);
+    this.auth.signOut();
+    void this.router.navigate(['/signin']);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.drawerOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  /** '/supervisor/tasks?x=1' → '/supervisor/tasks' */
+  private pathOf(url: string): string {
+    return url.split('?')[0].replace(/\/$/, '');
+  }
+
+  private isWide(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(min-width: 992px)').matches
+    );
+  }
+}

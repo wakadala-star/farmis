@@ -1,0 +1,131 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Workers submit credit transactions for farm purchases — review and
+      approve them here so the records stay clean for the owner.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+
+  <!-- ============ Tiles ============ -->
+  <div class="meta-row" aria-label="At a glance">
+    @for (tile of tiles(); track tile.label) {
+      <div [class]="'meta-tile meta-tile--' + tile.tone">
+        <span class="meta-tile__icon"><i [class]="tile.icon"></i></span>
+        <div class="meta-tile__body">
+          <span
+            class="meta-tile__value"
+            [class.is-money]="tile.value.startsWith('UGX')"
+            >{{ tile.value }}</span
+          >
+          <span class="meta-tile__label">{{ tile.label }}</span>
+          <span class="meta-tile__hint" [title]="tile.hint">{{
+            tile.hint
+          }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="ws__grid">
+    <!-- ============ Pending ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-money-bill-transfer widget__icon"></i>
+        <h2 class="widget__title">Pending Approval</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ pending().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (tx of pending(); track tx.id) {
+          <div class="list-row">
+            <span class="list-row__icon list-row__icon--amber"
+              ><i class="fa-solid fa-receipt"></i
+            ></span>
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ fmtMoney(tx.amount) }}</strong>
+                <span class="chip chip--amber">Pending</span>
+              </p>
+              <p class="list-row__sub" [title]="tx.reason">
+                {{ tx.worker }} · {{ tx.reason }}
+              </p>
+              <p class="list-row__meta">
+                {{ fmtDay(dayOf(tx.when)) }} · {{ fmtClock(tx.when) }}
+              </p>
+            </div>
+            <div class="list-row__side">
+              <button
+                type="button"
+                class="btn-mini btn-mini--ok"
+                (click)="approve(tx)"
+              >
+                <i class="fa-solid fa-check"></i>
+                Approve
+              </button>
+              <button
+                type="button"
+                class="btn-mini btn-mini--no"
+                (click)="reject(tx)"
+              >
+                <i class="fa-solid fa-xmark"></i>
+                Reject
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-circle-check"></i>
+            No credit transactions waiting for approval.
+          </p>
+        }
+      </div>
+    </article>
+
+    <!-- ============ History ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
+        <h2 class="widget__title">Decision History</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ history().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (tx of history(); track tx.id) {
+          <div class="list-row">
+            <span class="list-row__icon list-row__icon--blue"
+              ><i class="fa-solid fa-receipt"></i
+            ></span>
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ fmtMoney(tx.amount) }}</strong>
+                <span [class]="'chip chip--' + statusTone(tx.status)">{{
+                  statusLabel(tx.status)
+                }}</span>
+              </p>
+              <p class="list-row__sub" [title]="tx.reason">
+                {{ tx.worker }} · {{ tx.reason }}
+              </p>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            Decisions you make will be listed here.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+</section>

@@ -90,6 +90,28 @@
         }
       </div>
 
+      @if (showDepartment()) {
+        <div class="field">
+          <label class="field__label" for="signup-dept">Department</label>
+          <div class="field__box">
+            <i class="fa-solid fa-warehouse field__icon"></i>
+            <select
+              id="signup-dept"
+              class="select"
+              formControlName="department"
+            >
+              @for (option of deptOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <span class="field__hint">
+            <i class="fa-solid fa-circle-info"></i>
+            You will work inside this department’s workspace.
+          </span>
+        </div>
+      }
+
       <div class="field">
         <label class="field__label" for="signup-password">Password</label>
         <div class="field__box">
@@ -154,9 +176,9 @@
       <p class="auth-terms">
         <i class="fa-solid fa-shield-halved"></i>
         <span>
-          <strong>Role-based access.</strong> Owners see the full farm
-          dashboard; supervisor and worker workspaces arrive in the next
-          release.
+          <strong>Role-based access.</strong> Owners get the full farm
+          dashboard, supervisors run their department, and workers get
+          data entry, reports and attendance.
         </span>
       </p>
 

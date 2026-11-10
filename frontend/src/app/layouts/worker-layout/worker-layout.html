@@ -1,0 +1,232 @@
+<div class="shell" [class.is-collapsed]="collapsed()">
+  @if (drawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeDrawer()" aria-hidden="true"></div>
+  }
+
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar" [class.is-open]="drawerOpen()">
+    <div class="sidebar__head">
+      <app-brand />
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Main navigation">
+      @for (item of navItems; track item.label) {
+        <a
+          class="nav-item"
+          [routerLink]="item.link"
+          routerLinkActive="nav-item--active"
+          [title]="item.label"
+          (click)="closeDrawer()"
+        >
+          <i [class]="item.icon"></i>
+          <span class="nav-item__label">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar__foot">
+      @if (userMenuOpen()) {
+        <div class="user-menu" role="menu">
+          <button
+            type="button"
+            class="user-menu__item"
+            role="menuitem"
+            (click)="userMenuOpen.set(false)"
+          >
+            <i class="fa-regular fa-user"></i>
+            <span>My Profile</span>
+            <span class="badge-soon">Soon</span>
+          </button>
+          <button
+            type="button"
+            class="user-menu__item user-menu__item--danger"
+            role="menuitem"
+            (click)="signOut()"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sign out</span>
+          </button>
+        </div>
+      }
+
+      <button
+        type="button"
+        class="user-card"
+        (click)="toggleUserMenu()"
+        [attr.aria-expanded]="userMenuOpen()"
+        aria-haspopup="menu"
+      >
+        <span class="avatar avatar--md">{{ auth.initials() }}</span>
+        <span class="user-card__meta">
+          <span class="user-card__name">{{ auth.fullName() }}</span>
+          <span class="user-card__role">{{ roleLabel() }}</span>
+        </span>
+        <i
+          class="fa-solid fa-chevron-up user-card__chev"
+          [class.is-open]="userMenuOpen()"
+        ></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="icon-btn"
+        (click)="toggleSidebar()"
+        aria-label="Toggle navigation"
+      >
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <div class="topbar__title">
+        <h1 class="topbar__h1">
+          {{ topbar().title }}
+          <span class="dept-chip" [title]="deptShort() + ' Department'">{{
+            deptShort()
+          }}</span>
+        </h1>
+        <p class="topbar__sub">
+          <span class="topbar__sub-desk">{{ topbar().sub }}</span>
+          <span class="topbar__sub-mob">{{ topbar().mob }}</span>
+        </p>
+      </div>
+
+      <div class="topbar__brand">
+        <app-brand [compact]="true" />
+      </div>
+
+      <div class="topbar__actions">
+        <span class="icon-btn bell" title="Records awaiting approval">
+          <i class="fa-regular fa-bell"></i>
+          @if (pendingCount() > 0) {
+            <span class="bell__badge">{{ pendingCount() }}</span>
+          }
+        </span>
+
+        <div class="date-pill" title="Today">
+          <i class="fa-regular fa-calendar"></i>
+          <span>Mon, Nov 9, 2026</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </div>
+
+        <!-- ===== Clock in / out ===== -->
+        <div class="clock-wrap">
+          <button
+            type="button"
+            class="icon-btn clock-btn"
+            [class.is-live]="isClockedIn()"
+            (click)="toggleClockMenu()"
+            [attr.aria-expanded]="clockMenuOpen()"
+            aria-haspopup="dialog"
+            title="Clock in or out"
+            aria-label="Clock in or out"
+          >
+            <i class="fa-regular fa-clock"></i>
+            @if (isClockedIn()) {
+              <span class="clock-btn__dot" aria-hidden="true"></span>
+            }
+          </button>
+
+          @if (clockMenuOpen()) {
+            <div class="clock-pop" role="dialog" aria-label="Work timer">
+              <p class="clock-pop__status">
+                <span
+                  class="clock-pop__dot"
+                  [class.is-live]="isClockedIn()"
+                  aria-hidden="true"
+                ></span>
+                {{ isClockedIn() ? 'Clocked in' : 'Not clocked in' }}
+              </p>
+              <p class="clock-pop__timer" aria-live="off">{{ elapsedLabel() }}</p>
+              <p class="clock-pop__hint">
+                @if (isClockedIn()) {
+                  Shift started at {{ clockedInAt() }}
+                } @else {
+                  Tap below to start your shift
+                }
+              </p>
+              <button
+                type="button"
+                class="clock-pop__btn"
+                [class.is-out]="isClockedIn()"
+                (click)="toggleClock()"
+              >
+                <i [class]="isClockedIn() ? 'fa-solid fa-stop' : 'fa-solid fa-play'"></i>
+                {{ isClockedIn() ? 'Clock Out' : 'Clock In' }}
+              </button>
+              <a
+                class="clock-pop__link"
+                routerLink="/worker/attendance"
+                (click)="closeClockMenu()"
+              >
+                <span>View attendance</span>
+                <i class="fa-solid fa-arrow-right"></i>
+              </a>
+            </div>
+          }
+        </div>
+
+        <span class="avatar avatar--md" [title]="auth.fullName()">
+          {{ auth.initials() }}
+        </span>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- ============ Mobile bottom navigation ============ -->
+  <nav class="bottom-nav bottom-nav--worker" aria-label="Quick navigation">
+    <a
+      class="bottom-nav__item"
+      routerLink="/worker/tasks"
+      routerLinkActive="bottom-nav__item--active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      title="My Tasks"
+      (click)="closeDrawer()"
+    >
+      <i class="fa-solid fa-list-check"></i>
+      <span>Tasks</span>
+    </a>
+    <a
+      class="bottom-nav__item"
+      routerLink="/worker/data-entry"
+      routerLinkActive="bottom-nav__item--active"
+      title="Data Entry"
+      (click)="closeDrawer()"
+    >
+      <i class="fa-solid fa-pen-to-square"></i>
+      <span>Entry</span>
+    </a>
+    <span class="bottom-nav__fab-slot">
+      <span class="bottom-nav__fab" title="Coming soon">
+        <i class="fa-solid fa-plus"></i>
+      </span>
+    </span>
+    <a
+      class="bottom-nav__item"
+      routerLink="/worker/reports"
+      routerLinkActive="bottom-nav__item--active"
+      title="Daily Reports"
+      (click)="closeDrawer()"
+    >
+      <i class="fa-solid fa-clipboard"></i>
+      <span>Reports</span>
+    </a>
+    <a
+      class="bottom-nav__item"
+      routerLink="/worker/attendance"
+      routerLinkActive="bottom-nav__item--active"
+      title="Attendance"
+      (click)="closeDrawer()"
+    >
+      <i class="fa-solid fa-clock"></i>
+      <span>Attend.</span>
+    </a>
+  </nav>
+</div>

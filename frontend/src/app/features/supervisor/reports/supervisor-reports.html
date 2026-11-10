@@ -1,0 +1,140 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Generate a report on the farm’s daily operations for your department —
+      workers, tasks, entries, attendance and pending transaction value in one
+      page.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+
+  <div class="ws__grid">
+    <!-- ============ Generator ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-wand-magic-sparkles widget__icon"></i>
+        <h2 class="widget__title">Generate a Report</h2>
+      </header>
+
+      <div class="widget__body">
+        <form [formGroup]="form" (ngSubmit)="generate()" novalidate>
+          <div class="field">
+            <label class="field__label" for="rep-type">Report type</label>
+            <div class="field__box">
+              <i class="fa-solid fa-file-lines field__icon"></i>
+              <select id="rep-type" class="select" formControlName="type">
+                @for (type of reportTypes; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="rep-period">Period</label>
+            <div class="field__box">
+              <i class="fa-regular fa-calendar field__icon"></i>
+              <select id="rep-period" class="select" formControlName="period">
+                @for (period of periods; track period.value) {
+                  <option [value]="period.value">{{ period.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn--primary" type="submit">
+            <span>Generate Report</span>
+            <i class="fa-solid fa-chart-column"></i>
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ============ Preview ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-file-circle-check widget__icon"></i>
+        <h2 class="widget__title">Report Preview</h2>
+      </header>
+
+      <div class="widget__body">
+        @if (selected(); as report) {
+          <div class="report-card">
+            <p class="report-card__head">
+              <strong>{{ report.type }}</strong>
+              <span class="chip chip--blue">{{ report.period }}</span>
+            </p>
+            <p class="report-card__meta">
+              Generated {{ fmtClock(report.when) }} · {{ report.dept === 'crops' ? 'Crops' : 'Livestock' }} department
+            </p>
+            <dl class="report-card__lines">
+              @for (line of report.lines; track line.label) {
+                <div class="report-line">
+                  <dt>{{ line.label }}</dt>
+                  <dd>{{ line.value }}</dd>
+                </div>
+              }
+            </dl>
+            <p class="report-card__foot">
+              <i class="fa-solid fa-circle-info"></i>
+              Export arrives with the backend integration.
+            </p>
+          </div>
+        } @else {
+          <p class="empty-state">
+            <i class="fa-solid fa-chart-column"></i>
+            No report yet — pick a type and period, then hit Generate.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+
+  <!-- ============ History ============ -->
+  <article class="widget">
+    <header class="widget__head">
+      <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
+      <h2 class="widget__title">Generated Reports</h2>
+      <div class="widget__action">
+        <span class="badge-count">{{ history.length }}</span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @for (report of history; track report.id) {
+        <div
+          class="list-row list-row--clickable"
+          (click)="view(report)"
+          (keydown.enter)="view(report)"
+          role="button"
+          tabindex="0"
+        >
+          <span class="list-row__icon list-row__icon--blue"
+            ><i class="fa-solid fa-file-lines"></i
+          ></span>
+          <div class="list-row__main">
+            <p class="list-row__title">{{ report.type }}</p>
+            <p class="list-row__sub">
+              {{ report.period }} · generated at {{ fmtClock(report.when) }}
+            </p>
+          </div>
+          <div class="list-row__side">
+            <span class="chip chip--neutral">View</span>
+          </div>
+        </div>
+      } @empty {
+        <p class="empty-state">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          Reports you generate are kept here.
+        </p>
+      }
+    </div>
+  </article>
+</section>

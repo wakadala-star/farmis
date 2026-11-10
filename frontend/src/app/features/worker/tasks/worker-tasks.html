@@ -1,0 +1,65 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      These are the tasks your supervisor assigned to you — work through them
+      and file a <strong>Daily Report</strong> for each one you complete.
+    </span>
+  </p>
+
+  <!-- ============ Status tiles ============ -->
+  <div class="meta-row" aria-label="Task summary">
+    @for (tile of tiles; track tile.label) {
+      <div [class]="'meta-tile meta-tile--' + tile.tone">
+        <span class="meta-tile__icon"><i [class]="tile.icon"></i></span>
+        <div class="meta-tile__body">
+          <span class="meta-tile__value">{{ tile.value }}</span>
+          <span class="meta-tile__label">{{ tile.label }}</span>
+          <span class="meta-tile__hint" [title]="tile.hint">{{
+            tile.hint
+          }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- ============ Task list ============ -->
+  <article class="widget">
+    <header class="widget__head">
+      <i class="fa-solid fa-list-check widget__icon"></i>
+      <h2 class="widget__title">Assigned to Me</h2>
+      <div class="widget__action">
+        <span class="badge-count">{{ tasks.length }}</span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @for (task of tasks; track task.id) {
+        <div class="list-row">
+          <span class="list-row__icon list-row__icon--blue"
+            ><i class="fa-solid fa-list-check"></i
+          ></span>
+          <div class="list-row__main">
+            <p class="list-row__title-row">
+              <strong class="list-row__title">{{ task.title }}</strong>
+              <span [class]="'chip chip--' + statusTone(task.status)">{{
+                statusLabel(task.status)
+              }}</span>
+              <span [class]="'chip chip--' + dueTone(task.due, task.status)"
+                >Due {{ fmtDay(task.due) }}</span
+              >
+            </p>
+            @if (task.notes) {
+              <p class="list-row__sub">{{ task.notes }}</p>
+            }
+          </div>
+        </div>
+      } @empty {
+        <p class="empty-state">
+          <i class="fa-regular fa-face-smile"></i>
+          No tasks assigned yet — your supervisor will send work here.
+        </p>
+      }
+    </div>
+  </article>
+</section>

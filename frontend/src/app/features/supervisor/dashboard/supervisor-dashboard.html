@@ -1,0 +1,101 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Welcome, {{ firstName }}! Everything below is scoped to your department —
+      approve attendance and transactions, keep the team on task.
+    </span>
+  </p>
+
+  <!-- ============ Department tiles ============ -->
+  <div class="meta-row" aria-label="At a glance">
+    @for (tile of tiles; track tile.label) {
+      <div [class]="'meta-tile meta-tile--' + tile.tone">
+        <span class="meta-tile__icon"><i [class]="tile.icon"></i></span>
+        <div class="meta-tile__body">
+          <span class="meta-tile__value">{{ tile.value }}</span>
+          <span class="meta-tile__label">{{ tile.label }}</span>
+          <span class="meta-tile__hint" [title]="tile.hint">{{
+            tile.hint
+          }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="ws__grid">
+    <!-- ============ Today's attendance ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-clock widget__icon"></i>
+        <h2 class="widget__title">Today’s Attendance</h2>
+        <div class="widget__action">
+          <span class="widget__hint-label">Your department</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (row of todayRows; track row.rec.id) {
+          <div class="list-row">
+            <span class="list-row__avatar">{{ row.initial }}</span>
+            <div class="list-row__main">
+              <p class="list-row__title">{{ row.rec.worker }}</p>
+              <p class="list-row__sub">
+                In {{ fmtClock(row.rec.clockIn) }}
+                @if (row.rec.clockOut) {
+                  · Out {{ fmtClock(row.rec.clockOut!) }}
+                } @else {
+                  · on shift
+                }
+                · {{ row.duration }}
+              </p>
+            </div>
+            <div class="list-row__side">
+              <span [class]="'chip chip--' + statusTone(row.rec.status)">{{
+                statusLabel(row.rec.status)
+              }}</span>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-regular fa-clock"></i>
+            Nobody from your department has clocked in today yet.
+          </p>
+        }
+      </div>
+    </article>
+
+    <!-- ============ Awaiting approval ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-hourglass-half widget__icon"></i>
+        <h2 class="widget__title">Awaiting Approval</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ approvalRows.length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (row of approvalRows; track row.id) {
+          <div class="list-row">
+            <span class="list-row__icon list-row__icon--amber"
+              ><i [class]="row.icon"></i
+            ></span>
+            <div class="list-row__main">
+              <p class="list-row__title">{{ row.title }}</p>
+              <p class="list-row__sub" [title]="row.sub">{{ row.sub }}</p>
+            </div>
+            <div class="list-row__side">
+              <span class="chip chip--amber">Pending</span>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-circle-check"></i>
+            All caught up — nothing is waiting for your approval.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+</section>

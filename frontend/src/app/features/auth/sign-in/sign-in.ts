@@ -2,13 +2,13 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth.service';
-import { DEMO_CREDENTIALS } from '../../../core/models';
 import { Brand } from '../../../shared/brand/brand';
 
 /**
- * Sign-in screen. The demo owner credentials are prefilled so the
- * flow lands on the owner dashboard seamlessly; validation is real,
- * but there is no backend call yet.
+ * Sign-in screen — a clean form with real validation. Accounts are
+ * checked against the mock auth service (demo logins live in the
+ * README); after sign-in the router sends each role to its own
+ * workspace. No backend call yet.
  */
 @Component({
   selector: 'app-sign-in',
@@ -21,11 +21,11 @@ export class SignIn implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly form = new FormGroup({
-    email: new FormControl(DEMO_CREDENTIALS.email, {
+    email: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.email],
     }),
-    password: new FormControl(DEMO_CREDENTIALS.password, {
+    password: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
@@ -61,7 +61,8 @@ export class SignIn implements OnInit {
 
     if (result.ok) {
       const redirect =
-        this.route.snapshot.queryParamMap.get('from') || '/dashboard';
+        this.route.snapshot.queryParamMap.get('from') ||
+        this.auth.homeForRole(this.auth.role() ?? 'owner');
       void this.router.navigateByUrl(redirect);
     } else {
       this.error.set(result.message);

@@ -1,0 +1,70 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Use the <strong>clock button</strong> in the top bar (next to your
+      avatar) to clock in and out — your time is counted live and waits here
+      for your supervisor’s approval.
+    </span>
+  </p>
+
+  <!-- ============ Tiles ============ -->
+  <div class="meta-row" aria-label="Attendance summary">
+    @for (tile of tiles(); track tile.label) {
+      <div [class]="'meta-tile meta-tile--' + tile.tone">
+        <span class="meta-tile__icon"><i [class]="tile.icon"></i></span>
+        <div class="meta-tile__body">
+          <span class="meta-tile__value">{{ tile.value }}</span>
+          <span class="meta-tile__label">{{ tile.label }}</span>
+          <span class="meta-tile__hint" [title]="tile.hint">{{
+            tile.hint
+          }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- ============ My clock records ============ -->
+  <article class="widget">
+    <header class="widget__head">
+      <i class="fa-solid fa-clock widget__icon"></i>
+      <h2 class="widget__title">My Clock Records</h2>
+      <div class="widget__action">
+        <span class="badge-count">{{ records().length }}</span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @for (rec of records(); track rec.id) {
+        <div class="list-row">
+          <span class="list-row__icon list-row__icon--blue"
+            ><i class="fa-regular fa-clock"></i
+          ></span>
+          <div class="list-row__main">
+            <p class="list-row__title-row">
+              <strong class="list-row__title">{{ fmtDay(rec.date) }}</strong>
+              <span [class]="'chip chip--' + statusTone(rec.status)">{{
+                statusLabel(rec.status)
+              }}</span>
+            </p>
+            <p class="list-row__sub">
+              In {{ fmtClock(rec.clockIn) }}
+              @if (rec.clockOut) {
+                · Out {{ fmtClock(rec.clockOut!) }}
+              } @else {
+                · still on shift
+              }
+              · {{ fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)) }}
+            </p>
+          </div>
+        </div>
+      } @empty {
+        <p class="empty-state">
+          <i class="fa-solid fa-clock"></i>
+          No clock records yet — open the clock button in the top bar and
+          clock in to start your first shift.
+        </p>
+      }
+    </div>
+  </article>
+</section>

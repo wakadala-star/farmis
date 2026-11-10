@@ -1,0 +1,136 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Manage your department team — recruit new workers, jump straight into
+      task assignment, or remove someone from the team.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="ws__grid">
+    <!-- ============ Recruit ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-user-plus widget__icon"></i>
+        <h2 class="widget__title">Recruit a Worker</h2>
+      </header>
+
+      <div class="widget__body">
+        <form [formGroup]="form" (ngSubmit)="recruit()" novalidate>
+          <div class="field">
+            <label class="field__label" for="w-name">Full name</label>
+            <div class="field__box">
+              <i class="fa-regular fa-user field__icon"></i>
+              <input
+                id="w-name"
+                type="text"
+                class="input"
+                [class.is-invalid]="invalid('name')"
+                placeholder="e.g. Alex Musoke"
+                formControlName="name"
+              />
+            </div>
+            @if (invalid('name')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Enter the worker’s full name.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="w-email">Email address</label>
+            <div class="field__box">
+              <i class="fa-regular fa-envelope field__icon"></i>
+              <input
+                id="w-email"
+                type="email"
+                class="input"
+                [class.is-invalid]="invalid('email')"
+                placeholder="worker@farm.com"
+                formControlName="email"
+              />
+            </div>
+            @if (invalid('email')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Enter a valid email address.
+              </span>
+            }
+          </div>
+
+          <button class="btn btn--primary" type="submit">
+            <span>Recruit Worker</span>
+            <i class="fa-solid fa-user-plus"></i>
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ============ Team list ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-users widget__icon"></i>
+        <h2 class="widget__title">Your Team</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ workers().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (worker of workers(); track worker.id) {
+          <div class="list-row">
+            <span class="list-row__avatar">{{ worker.name.charAt(0) }}</span>
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ worker.name }}</strong>
+                <span class="chip chip--green">Active</span>
+              </p>
+              <p class="list-row__sub">
+                {{ worker.email }} · joined {{ fmtDay(worker.joined) }}
+              </p>
+            </div>
+            <div class="list-row__side">
+              <button
+                type="button"
+                class="btn-mini"
+                title="Assign a task to this worker"
+                (click)="assign(worker)"
+              >
+                <i class="fa-solid fa-list-check"></i>
+                Assign
+              </button>
+              <button
+                type="button"
+                class="btn-mini btn-mini--no"
+                title="Remove from the department"
+                (click)="remove(worker)"
+              >
+                <i class="fa-solid fa-trash"></i>
+                Remove
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-user-plus"></i>
+            No workers yet — recruit the first one with the form.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+</section>

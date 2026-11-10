@@ -9,7 +9,12 @@ import {
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth.service';
-import { ROLE_OPTIONS, Role } from '../../../core/models';
+import {
+  DEPT_OPTIONS,
+  Department,
+  ROLE_OPTIONS,
+  Role,
+} from '../../../core/models';
 import { Brand } from '../../../shared/brand/brand';
 
 /** Group validator: password and confirmation must match. */
@@ -42,6 +47,7 @@ export class SignUp {
   private readonly router = inject(Router);
 
   protected readonly roleOptions = ROLE_OPTIONS;
+  protected readonly deptOptions = DEPT_OPTIONS;
 
   protected readonly form = new FormGroup(
     {
@@ -56,6 +62,9 @@ export class SignUp {
       role: new FormControl<Role | ''>('', {
         nonNullable: true,
         validators: [Validators.required],
+      }),
+      department: new FormControl<Department>('crops', {
+        nonNullable: true,
       }),
       password: new FormControl('', {
         nonNullable: true,
@@ -72,6 +81,8 @@ export class SignUp {
   protected readonly error = signal('');
   protected readonly hidePassword = signal(true);
   protected readonly roleIcon = signal('fa-solid fa-id-badge');
+  /** Department is only relevant for supervisors and workers. */
+  protected readonly showDepartment = signal(false);
 
   protected invalid(control: 'fullName' | 'email' | 'role' | 'password' | 'confirm'): boolean {
     const field = this.form.controls[control];
@@ -95,6 +106,7 @@ export class SignUp {
     this.roleIcon.set(
       (role ? ROLE_ICONS[role as Role] : undefined) ?? 'fa-solid fa-id-badge',
     );
+    this.showDepartment.set(role === 'supervisor' || role === 'worker');
   }
 
   protected onSubmit(): void {
@@ -103,12 +115,15 @@ export class SignUp {
       return;
     }
 
-    const { fullName, email, password, role } = this.form.getRawValue();
+    const { fullName, email, password, role, department } = this.form.getRawValue();
     const result = this.auth.signUp({
       fullName: fullName.trim(),
       email: email.trim(),
       password,
       role: role as Role,
+      // The department only applies to supervisors and workers.
+      department:
+        role === 'owner' ? undefined : (department as Department),
     });
 
     if (result.ok) {

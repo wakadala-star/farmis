@@ -1,0 +1,198 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Enter today’s specifics in the system — every entry lands in your
+      department’s records for the supervisor and owner to see.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="ws__grid">
+    <!-- ============ Entry form ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-pen-to-square widget__icon"></i>
+        <h2 class="widget__title">New Entry</h2>
+        <div class="widget__action">
+          <span class="widget__hint-label">Today</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          <div class="field">
+            <label class="field__label" for="de-activity">{{
+              activityField.label
+            }}</label>
+            <div class="field__box">
+              <i [class]="activityField.icon + ' field__icon'"></i>
+              <select
+                id="de-activity"
+                class="select"
+                [class.is-invalid]="invalid('activity')"
+                formControlName="activity"
+              >
+                <option value="" disabled>Choose an activity</option>
+                @for (option of activityField.options; track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </div>
+            @if (invalid('activity')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Choose what you did.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="de-place">{{
+              placeField.label
+            }}</label>
+            <div class="field__box">
+              <i [class]="placeField.icon + ' field__icon'"></i>
+              <select
+                id="de-place"
+                class="select"
+                [class.is-invalid]="invalid('place')"
+                formControlName="place"
+              >
+                <option value="" disabled>Choose a location</option>
+                @for (option of placeField.options; track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </div>
+            @if (invalid('place')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Choose where the work happened.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="de-subject">{{
+              subjectField.label
+            }}</label>
+            <div class="field__box">
+              <i [class]="subjectField.icon + ' field__icon'"></i>
+              <select
+                id="de-subject"
+                class="select"
+                [class.is-invalid]="invalid('subject')"
+                formControlName="subject"
+              >
+                <option value="" disabled>Choose one</option>
+                @for (option of subjectField.options; track option) {
+                  <option [value]="option">{{ option }}</option>
+                }
+              </select>
+            </div>
+            @if (invalid('subject')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Choose the crop or animal this entry is about.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="de-measure">
+              {{ isCrops ? 'Amount / area' : 'Count / amount' }}
+            </label>
+            <div class="field__box">
+              <i class="fa-solid fa-ruler field__icon"></i>
+              <input
+                id="de-measure"
+                type="text"
+                class="input"
+                [class.is-invalid]="invalid('measure')"
+                [placeholder]="isCrops ? 'e.g. 2 ha, 150 kg' : 'e.g. 24 heads, 3 sacks'"
+                formControlName="measure"
+              />
+            </div>
+            @if (invalid('measure')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Record the quantity or size of the work.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="de-notes">Notes (optional)</label>
+            <div class="field__box">
+              <i class="fa-regular fa-note-sticky field__icon"></i>
+              <textarea
+                id="de-notes"
+                class="textarea"
+                rows="3"
+                placeholder="Anything worth mentioning"
+                formControlName="notes"
+              ></textarea>
+            </div>
+          </div>
+
+          <button class="btn btn--primary" type="submit">
+            <span>Save Entry</span>
+            <i class="fa-solid fa-check"></i>
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ============ Recent entries ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
+        <h2 class="widget__title">Recent Entries</h2>
+        <div class="widget__action">
+          <span class="widget__hint-label">Department feed</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (entry of recent(); track entry.id) {
+          <div class="list-row">
+            <span class="list-row__avatar">{{ entry.worker.charAt(0) }}</span>
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ entry.activity }}</strong>
+                <span class="chip chip--green">{{ entry.measure }}</span>
+              </p>
+              <p class="list-row__sub">
+                {{ entry.subject }} · {{ entry.place }} · {{ entry.worker }}
+              </p>
+              @if (entry.notes) {
+                <p class="list-row__meta">{{ entry.notes }}</p>
+              }
+            </div>
+            <div class="list-row__side">
+              <span class="list-row__when">{{ fmtDay(entry.date) }}</span>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-pen-to-square"></i>
+            No entries yet — save the first one with the form.
+          </p>
+        }
+      </div>
+    </article>
+  </div>
+</section>
