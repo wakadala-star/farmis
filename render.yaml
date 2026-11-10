@@ -6,7 +6,7 @@
 # prompts for DATABASE_URL (sync: false) during the initial setup.
 services:
   - type: web
-    name: farmis-api
+    name: farmis-backend
     runtime: node
     plan: free            # 0.1 CPU / 512 MB — sleeps after ~15 min idle
     rootDir: backend      # monorepo: only backend/ changes trigger a build

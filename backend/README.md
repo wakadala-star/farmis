@@ -86,7 +86,7 @@ Production is described by [`render.yaml`](../render.yaml) at the repo root:
 
 | Piece | Value |
 | --- | --- |
-| Service | `farmis-api`, Node runtime, **free** plan, `rootDir: backend` |
+| Service | `farmis-backend`, Node runtime, **free** plan, `rootDir: backend` |
 | Build / start | `npm ci` → `npm start` |
 | Health check | `GET /api/health` |
 | `NODE_ENV` | `production` |
@@ -104,7 +104,7 @@ Steps (first time only):
 3. **Render** — New → Blueprint → pick this repo. Render reads
    `render.yaml`, prompts for `DATABASE_URL` (paste the Neon string), and
    deploys `backend/` only — frontend changes never rebuild the API.
-4. Note the final service URL (e.g. `https://farmis-api.onrender.com`) and
+4. Note the final service URL (e.g. `https://farmis-backend.onrender.com`) and
    keep `frontend/src/environments/environment.prod.ts` pointing at it
    (`…/api`).
 
