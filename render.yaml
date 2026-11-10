@@ -1,0 +1,28 @@
+# Render Blueprint — FARMIS API (Express backend)
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Created from the Render dashboard (New → Blueprint → this repo).
+# Render reads this file, deploys backend/ as a free web service, and
+# prompts for DATABASE_URL (sync: false) during the initial setup.
+services:
+  - type: web
+    name: farmis-api
+    runtime: node
+    plan: free            # 0.1 CPU / 512 MB — sleeps after ~15 min idle
+    rootDir: backend      # monorepo: only backend/ changes trigger a build
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # The GitHub Pages origin that may call the API with credentials.
+      # Local development keeps localhost:4200 in backend/.env instead.
+      - key: CLIENT_ORIGIN
+        value: https://wakadala-star.github.io
+      # Paste the Neon connection string when Render prompts for it.
+      - key: DATABASE_URL
+        sync: false
+      # Random base64 256-bit value, generated once on first Blueprint creation.
+      - key: JWT_SECRET
+        generateValue: true

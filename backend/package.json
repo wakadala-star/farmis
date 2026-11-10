@@ -1,0 +1,21 @@
+{
+  "name": "farmis-backend",
+  "version": "1.0.0",
+  "description": "FARMIS backend API - authentication & authorization (Express + PostgreSQL + JWT)",
+  "main": "src/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "setup-db": "node src/scripts/setup-db.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0"
+  }
+}
