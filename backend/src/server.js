@@ -3,8 +3,13 @@ const { env } = require('./config/env');
 const { pool } = require('./db/pool');
 
 const server = app.listen(env.port, () => {
-  console.log(`[farmis-api] listening on http://localhost:${env.port}`);
-  console.log(`[farmis-api] database: ${env.pg.user}@${env.pg.host}:${env.pg.port}/${env.pg.database}`);
+  console.log(`[farmis-api] listening on port ${env.port} (${env.nodeEnv})`);
+  if (env.pg.connectionString) {
+    const url = new URL(env.pg.connectionString);
+    console.log(`[farmis-api] database: ${url.user}@${url.host}${url.pathname}`);
+  } else {
+    console.log(`[farmis-api] database: ${env.pg.user}@${env.pg.host}:${env.pg.port}/${env.pg.database}`);
+  }
   console.log(`[farmis-api] CORS origin(s): ${env.clientOrigins.join(', ')}`);
 });
 
