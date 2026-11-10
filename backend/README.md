@@ -19,9 +19,14 @@ frontend (Angular).
 ```bash
 cd backend
 npm install
-npm run setup-db     # creates the DB, applies schema, seeds demo users
+npm run setup-db      # migrations + demo users + demo farm data (idempotent)
 npm start             # or: npm run dev  (auto-restart on changes)
 ```
+
+`npm run setup-db` is **non-destructive** and safe to re-run: pending
+migrations are applied (recorded in `schema_migrations`), demo accounts are
+created only if missing, and demo farm data only fills tables that are still
+empty. `npm run migrate` applies pending migrations without seeding.
 
 Requires the PostgreSQL service running locally with the credentials in
 `.env` (defaults: `postgres` / `postgres` on port 5432).
@@ -38,6 +43,10 @@ Requires the PostgreSQL service running locally with the credentials in
 | GET    | `/api/users`       | owner/supervisor| Owner: all users · Supervisor: own department · Worker: 403 |
 
 All responses are JSON: `{ ok: boolean, message: string, ... }`.
+
+Every signup/signin attempt is recorded in the `auth_attempts` table
+(action, outcome, email, reason code, IP — never passwords), so failures
+such as a closed owner bootstrap or a validation error leave a trace.
 
 ## Signup rules (roles ↔ screens)
 
@@ -99,8 +108,9 @@ Steps (first time only):
 1. **Neon** — create a project, copy the connection string
    (contains `?sslmode=require`; `pg` handles it).
 2. **Seed Neon** from your machine:
-   `DATABASE_URL="postgres://…" npm run setup-db` (schema + 5 demo users;
-   creation of the database is skipped because Neon already provides it).
+   `DATABASE_URL="postgres://…" npm run setup-db` (migrations + 5 demo
+   users + demo farm data; creation of the database is skipped because
+   Neon already provides it).
 3. **Render** — New → Blueprint → pick this repo. Render reads
    `render.yaml`, prompts for `DATABASE_URL` (paste the Neon string), and
    deploys `backend/` only — frontend changes never rebuild the API.
@@ -117,7 +127,32 @@ Behaviour differences in production:
 
 ## Database
 
-`db/schema.sql` is a PostgreSQL port of the original MySQL script
+The schema is managed by **migrations** in [`db/migrations/`](db/migrations/):
+
+| File | Adds |
+| --- | --- |
+| `001_initial_schema.sql` | The original 12 tables + role/department seeds (guards: `IF NOT EXISTS`) |
+| `002_attendance_approval.sql` | `attendance.approval_status/approved_by/approved_at` (clock-in → approve workflow) |
+| `003_field_entries.sql` | `field_entries` — worker data-entry records |
+| `004_credit_requests.sql` | `credit_requests` — supervisor transaction approvals |
+| `005_daily_reports.sql` | `daily_reports` — worker daily work logs (hours + summary) |
+| `006_operations_reports.sql` | `operations_reports` — generated report snapshots (JSONB lines) |
+| `007_auth_attempts.sql` | `auth_attempts` — signup/signin audit log |
+
+Rules:
+
+- Applied by `npm run migrate` (or `npm run setup-db`); each file runs in
+  its own transaction and is recorded in `schema_migrations`, so re-running
+  is a no-op.
+- **Migrations never drop or rewrite existing data.** New schema changes go
+  in as a new numbered file — never edit an applied one.
+- `db/schema.sql` is the legacy full-reset script (it drops everything);
+  keep it for wiping a **local** database only, never one with real data.
+- To change the production schema: add a migration, run
+  `DATABASE_URL="postgres://…" npm run migrate` from your machine, then
+  push (Render deploys the code; the DB is already migrated).
+
+`schema.sql` is a PostgreSQL port of the original MySQL script
 (`../db/mkwasi_agri_business.sql`) — same 12 tables, with:
 
 - `INT UNSIGNED AUTO_INCREMENT` → `BIGSERIAL`

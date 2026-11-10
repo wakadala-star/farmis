@@ -4,6 +4,7 @@ const { env } = require('../config/env');
 const { query } = require('../db/pool');
 const { departmentName } = require('../db/departments');
 const { setAuthCookie, clearAuthCookie } = require('../middleware/auth');
+const { logAuthAttempt } = require('../db/audit');
 
 const BCRYPT_ROUNDS = 10;
 const ROLES = ['owner', 'supervisor', 'worker'];
@@ -63,6 +64,7 @@ async function signup(req, res, next) {
   try {
     const { errors, fullName, email, password, role, department } = validateSignup(req.body ?? {});
     if (errors.length > 0) {
+      logAuthAttempt('signup', 'failure', { email, reason: 'validation', ip: req.ip });
       return res.status(400).json({ ok: false, message: errors.join(' ') });
     }
 
@@ -77,6 +79,7 @@ async function signup(req, res, next) {
       const hasOwner = rows[0].has_owner;
       const callerIsOwner = req.user?.role === 'owner';
       if (hasOwner && !callerIsOwner) {
+        logAuthAttempt('signup', 'failure', { email, reason: 'owner_closed', ip: req.ip });
         return res.status(403).json({
           ok: false,
           message: 'Owner accounts are created by an existing farm owner.',
@@ -86,6 +89,7 @@ async function signup(req, res, next) {
 
     const { rows: existing } = await query('SELECT 1 FROM users WHERE lower(email) = $1', [email]);
     if (existing.length > 0) {
+      logAuthAttempt('signup', 'failure', { email, reason: 'duplicate_email', ip: req.ip });
       return res.status(409).json({
         ok: false,
         message: 'An account with this email already exists.',
@@ -116,6 +120,8 @@ async function signup(req, res, next) {
       [roleId, departmentId, firstName, lastName, username, email, passwordHash],
     );
 
+    logAuthAttempt('signup', 'success', { email, userId: rows[0].user_id, ip: req.ip });
+
     return res.status(201).json({
       ok: true,
       message: 'Account created successfully.',
@@ -135,6 +141,7 @@ async function signin(req, res, next) {
     const email = String(req.body?.email ?? '').trim().toLowerCase();
     const password = String(req.body?.password ?? '');
     if (!email || !password) {
+      logAuthAttempt('signin', 'failure', { email: email || null, reason: 'validation', ip: req.ip });
       return res.status(400).json({ ok: false, message: 'Email and password are required.' });
     }
 
@@ -150,12 +157,19 @@ async function signin(req, res, next) {
     const user = rows[0];
 
     const badCredentials = { ok: false, message: 'Incorrect email or password.' };
-    if (!user) return res.status(401).json(badCredentials);
+    if (!user) {
+      logAuthAttempt('signin', 'failure', { email, reason: 'unknown_email', ip: req.ip });
+      return res.status(401).json(badCredentials);
+    }
 
     const matches = await bcrypt.compare(password, user.password_hash);
-    if (!matches) return res.status(401).json(badCredentials);
+    if (!matches) {
+      logAuthAttempt('signin', 'failure', { email, userId: user.user_id, reason: 'bad_password', ip: req.ip });
+      return res.status(401).json(badCredentials);
+    }
 
     if (user.employment_status !== 'active') {
+      logAuthAttempt('signin', 'failure', { email, userId: user.user_id, reason: 'inactive_account', ip: req.ip });
       return res.status(403).json({ ok: false, message: 'This account is inactive. Contact the farm owner.' });
     }
 
@@ -165,6 +179,7 @@ async function signin(req, res, next) {
       { expiresIn: env.jwt.ttl },
     );
     setAuthCookie(res, token);
+    logAuthAttempt('signin', 'success', { email, userId: user.user_id, ip: req.ip });
 
     const session = {
       id: String(user.user_id),

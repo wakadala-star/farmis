@@ -1,3 +1,12 @@
+-- ===========================================================================
+-- ⚠ SUPERSEDED — do NOT run this against a database with real data.
+--   This script DROPS every table and re-seeds. The live schema is now
+--   managed by db/migrations/*.sql (applied by `npm run setup-db` or
+--   `npm run migrate`, recorded in schema_migrations — never destructive).
+--   Kept only as a reference for the original 12-table layout, or for a
+--   full wipe of a LOCAL development database.
+-- ===========================================================================
+--
 -- FARMIS: Mkwasi Agri Business Management System
 -- Database: mukwasi_agri_business
 -- PostgreSQL port of db/mkwasi_agri_business.sql (originally MySQL).
