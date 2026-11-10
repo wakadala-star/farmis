@@ -80,6 +80,8 @@ export class SignUp {
   protected readonly error = signal('');
   protected readonly hidePassword = signal(true);
   protected readonly roleIcon = signal('fa-solid fa-id-badge');
+  /** True while the sign-up request is in flight (button shows "Creating account…"). */
+  protected readonly submitting = signal(false);
   /** Department is only relevant for supervisors and workers. */
   protected readonly showDepartment = signal(false);
 
@@ -109,29 +111,40 @@ export class SignUp {
   }
 
   protected async onSubmit(): Promise<void> {
+    // Blocks double submits, including Enter pressed while in flight.
+    if (this.submitting()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
     this.error.set('');
-    const { fullName, email, password, role, department } = this.form.getRawValue();
-    const result = await this.auth.signUp({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      password,
-      role: role as Role,
-      // The department only applies to supervisors and workers.
-      department:
-        role === 'owner' ? undefined : (department as Department),
-    });
-
-    if (result.ok) {
-      void this.router.navigate(['/signin'], {
-        queryParams: { registered: '1' },
+    this.submitting.set(true);
+    let succeeded = false;
+    try {
+      const { fullName, email, password, role, department } = this.form.getRawValue();
+      const result = await this.auth.signUp({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password,
+        role: role as Role,
+        // The department only applies to supervisors and workers.
+        department:
+          role === 'owner' ? undefined : (department as Department),
       });
-    } else {
+
+      if (result.ok) {
+        succeeded = true;
+        // Keep the loading state until navigation swaps the view.
+        void this.router.navigate(['/signin'], {
+          queryParams: { registered: '1' },
+        });
+        return;
+      }
       this.error.set(result.message);
+    } finally {
+      // Reset only on failure — on success the view is being replaced.
+      if (!succeeded) this.submitting.set(false);
     }
   }
 }

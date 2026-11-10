@@ -79,9 +79,19 @@
         }
       </div>
 
-      <button class="btn btn--primary" type="submit">
-        <span>Sign In</span>
-        <i class="fa-solid fa-arrow-right"></i>
+      <button
+        class="btn btn--primary"
+        type="submit"
+        [disabled]="submitting()"
+        [attr.aria-busy]="submitting()"
+      >
+        @if (submitting()) {
+          <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+          <span>Logging in…</span>
+        } @else {
+          <span>Sign In</span>
+          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+        }
       </button>
     </form>
 

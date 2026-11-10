@@ -34,6 +34,8 @@ export class SignIn implements OnInit {
   protected readonly error = signal('');
   protected readonly notice = signal('');
   protected readonly hidePassword = signal(true);
+  /** True while the sign-in request is in flight (button shows "Logging in…"). */
+  protected readonly submitting = signal(false);
 
   ngOnInit(): void {
     if (this.route.snapshot.queryParamMap.get('registered')) {
@@ -51,22 +53,34 @@ export class SignIn implements OnInit {
   }
 
   protected async onSubmit(): Promise<void> {
+    // Blocks double submits, including Enter pressed while in flight.
+    if (this.submitting()) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
     this.error.set('');
-    const { email, password } = this.form.getRawValue();
-    const result = await this.auth.signIn(email, password);
+    this.submitting.set(true);
+    let succeeded = false;
+    try {
+      const { email, password } = this.form.getRawValue();
+      const result = await this.auth.signIn(email, password);
 
-    if (result.ok) {
-      const redirect =
-        this.route.snapshot.queryParamMap.get('from') ||
-        this.auth.homeForRole(this.auth.role() ?? 'owner');
-      void this.router.navigateByUrl(redirect);
-    } else {
+      if (result.ok) {
+        succeeded = true;
+        const redirect =
+          this.route.snapshot.queryParamMap.get('from') ||
+          this.auth.homeForRole(this.auth.role() ?? 'owner');
+        // Keep the loading state until navigation swaps the view,
+        // so the button never flashes back to "Sign In".
+        void this.router.navigateByUrl(redirect);
+        return;
+      }
       this.error.set(result.message);
+    } finally {
+      // Reset only on failure — on success the view is being replaced.
+      if (!succeeded) this.submitting.set(false);
     }
   }
 }
