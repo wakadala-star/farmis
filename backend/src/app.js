@@ -9,6 +9,11 @@ const attendanceRoutes = require('./routes/attendance.routes');
 const entriesRoutes = require('./routes/entries.routes');
 const reportsRoutes = require('./routes/reports.routes');
 const transactionsRoutes = require('./routes/transactions.routes');
+const ownerRoutes = require('./routes/owner.routes');
+const salesRoutes = require('./routes/sales.routes');
+const cropsRoutes = require('./routes/crops.routes');
+const livestockRoutes = require('./routes/livestock.routes');
+const expensesRoutes = require('./routes/expenses.routes');
 
 const app = express();
 
@@ -38,6 +43,11 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/entries', entriesRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/transactions', transactionsRoutes);
+app.use('/api/owner', ownerRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/crops', cropsRoutes);
+app.use('/api/livestock', livestockRoutes);
+app.use('/api/expenses', expensesRoutes);
 
 // Unknown routes → JSON 404 (not an HTML page).
 app.use((req, res) => {

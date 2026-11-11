@@ -4,8 +4,9 @@
  *   2. applies db/migrations/*.sql in order (recorded in schema_migrations)
  *   3. seeds the 5 demo accounts (password: Farmis123)
  *   4. seeds demo farm data — tasks, attendance, field entries, daily
- *      reports, credit requests, inventory, sales — but only into tables
- *      that are still empty, so real data is never touched.
+ *      reports, credit requests, inventory, sales, crops, livestock and
+ *      expenses — but only into tables that are still empty, so real
+ *      data is never touched.
  *
  * Run: npm run setup-db    (safe to re-run any time)
  *      npm run migrate     (migrations only, no seeds)
@@ -281,6 +282,18 @@ async function seedDemoData() {
       [['FEED-LAY-01', 'Laying Pellets', 25, 7900]]],
     ['RCP-2026-003', customerId, owner, isoOffset(0), 'cash', 'pending',
       [['FEED-BRO-01', 'Broiler Starter Feed', 5, 8200]]],
+    // Historical months — so the owner dashboard's 6-month sales chart
+    // has a shape beyond the current month (idempotent via ON CONFLICT).
+    ['RCP-2026-004', customerId, owner, isoOffset(-35), 'mobile_money', 'paid',
+      [['FEED-BRO-01', 'Broiler Starter Feed', 40, 8200]]],
+    ['RCP-2026-005', null, owner, isoOffset(-65), 'cash', 'paid',
+      [['SEED-MAIZE-01', 'Hybrid Maize Seed', 60, 4500]]],
+    ['RCP-2026-006', customerId, owner, isoOffset(-95), 'cash', 'paid',
+      [['FEED-LAY-01', 'Laying Pellets', 150, 7900]]],
+    ['RCP-2026-007', null, owner, isoOffset(-125), 'mobile_money', 'paid',
+      [['SEED-MAIZE-01', 'Hybrid Maize Seed', 80, 4500], ['FEED-LAY-01', 'Laying Pellets', 30, 7900]]],
+    ['RCP-2026-008', customerId, owner, isoOffset(-155), 'cash', 'paid',
+      [['FEED-BRO-01', 'Broiler Starter Feed', 100, 8200]]],
   ];
   let seededSales = 0;
   for (const [receipt, cust, user, day, method, payment, lines] of sales) {
@@ -311,6 +324,55 @@ async function seedDemoData() {
     }
   }
   if (seededSales > 0) console.log(`[setup] seeded ${seededSales} demo sales with line items`);
+
+  // ---- Owner registries: crops, livestock, expenses (Phase 2D) ------
+  if ((await countIn('crops')) === 0) {
+    const rows = [
+      ['Maize', 'Hybrid 614', 5, -40, 'Plot A — well weeded, drip lines checked.'],
+      ['Beans', 'Sugar bean', 2, -20, 'Plot C — intercropped with young maize.'],
+      ['Tomatoes', 'Rio Grande', 0.5, -10, 'Seedbeds under shade net.'],
+    ];
+    for (const [name, variety, area, planted, notes] of rows) {
+      await pool.query(
+        `INSERT INTO crops (name, variety, area_ha, planted_date, notes, created_by)
+         VALUES ($1, $2, $3, $4::date, $5, $6)`,
+        [name, variety, area, isoOffset(planted), notes, owner],
+      );
+    }
+    console.log(`[setup] seeded ${rows.length} demo crops`);
+  }
+
+  if ((await countIn('livestock')) === 0) {
+    const rows = [
+      ['Cattle', 'Holstein-Friesian', 120, 'Dairy Unit', -120, 'Milking herd, 2× daily.'],
+      ['Broilers', 'Cobb 500', 2500, 'Poultry House A', -35, 'Batch 14 on feed.'],
+      ['Goats', 'Saanen', 12, 'Goat Pen', -60, 'Dairy goats, kidding season soon.'],
+    ];
+    for (const [species, breed, qty, location, acquired, notes] of rows) {
+      await pool.query(
+        `INSERT INTO livestock (species, breed, quantity, location, acquired_date, notes, created_by)
+         VALUES ($1, $2, $3, $4, $5::date, $6, $7)`,
+        [species, breed, qty, location, isoOffset(acquired), notes, owner],
+      );
+    }
+    console.log(`[setup] seeded ${rows.length} demo livestock records`);
+  }
+
+  if ((await countIn('expenses')) === 0) {
+    const rows = [
+      ['feed', 'Broiler starter feed — 2 bags', 16400, -3, 'cash'],
+      ['medicine', 'Newcastle vaccine (10 vials)', 45000, -2, 'mobile_money'],
+      ['fuel', 'Tractor fuel — 40 L', 78000, -1, 'cash'],
+    ];
+    for (const [category, description, amount, day, method] of rows) {
+      await pool.query(
+        `INSERT INTO expenses (category, description, amount, expense_date, payment_method, created_by)
+         VALUES ($1, $2, $3, $4::date, $5, $6)`,
+        [category, description, amount, isoOffset(day), method, owner],
+      );
+    }
+    console.log(`[setup] seeded ${rows.length} demo expenses`);
+  }
 
   // ---- Operations report (supervisor Reports screen) ----------------
   if ((await countIn('operations_reports')) === 0) {
