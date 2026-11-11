@@ -1,7 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
-  FarmDataService,
   TransactionRec,
   dayKey,
   fmtClock,
@@ -10,7 +9,6 @@ import {
   statusLabel,
   statusTone,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 import { MetaTile } from '../../../shared/management-view/management-view';
 
 /**
@@ -22,10 +20,7 @@ import { MetaTile } from '../../../shared/management-view/management-view';
   templateUrl: './supervisor-transactions.html',
 })
 export class SupervisorTransactions {
-  private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
-
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
+  readonly api = inject(FarmApiService);
 
   readonly fmtClock = fmtClock;
   readonly fmtDay = fmtDay;
@@ -36,33 +31,68 @@ export class SupervisorTransactions {
   readonly dayOf = (ms: number) => dayKey(new Date(ms));
 
   readonly notice = signal('');
+  readonly error = signal('');
+  /** Request id whose decision is in flight (disables both buttons). */
+  readonly decidingId = signal('');
+
+  readonly loading = this.api.transactionsLoading;
+  readonly loadError = this.api.transactionsError;
+
+  constructor() {
+    void this.api.ensure('transactions');
+  }
+
+  retry(): void {
+    void this.api.ensure('transactions');
+  }
 
   readonly tiles = computed<MetaTile[]>(() => this.buildTiles());
 
   /** Credit transactions waiting for a decision. */
-  readonly pending = computed(() => this.data.pendingTransactions(this.dept));
+  readonly pending = computed(() =>
+    this.api.transactions().filter((tx) => tx.status === 'pending'),
+  );
 
   /** Already decided transactions, newest first. */
   readonly history = computed(() =>
-    this.data
-      .transactionsOf(this.dept)
-      .filter((tx) => tx.status !== 'pending'),
+    this.api.transactions().filter((tx) => tx.status !== 'pending'),
   );
 
   approve(tx: TransactionRec): void {
-    this.data.setTransactionStatus(tx.id, 'approved');
-    this.notice.set(`${fmtMoney(tx.amount)} for ${tx.worker} approved.`);
+    void this.decide(tx, 'approved');
   }
 
   reject(tx: TransactionRec): void {
-    this.data.setTransactionStatus(tx.id, 'rejected');
-    this.notice.set(`${fmtMoney(tx.amount)} for ${tx.worker} rejected.`);
+    void this.decide(tx, 'rejected');
+  }
+
+  private async decide(
+    tx: TransactionRec,
+    decision: 'approved' | 'rejected',
+  ): Promise<void> {
+    if (this.decidingId()) return;
+    this.decidingId.set(tx.id);
+    try {
+      const res = await this.api.decideTransaction(tx.id, decision);
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      this.error.set('');
+      this.notice.set(
+        `${fmtMoney(tx.amount)} for ${tx.worker} ${
+          decision === 'approved' ? 'approved' : 'rejected'
+        }.`,
+      );
+    } finally {
+      this.decidingId.set('');
+    }
   }
 
   private buildTiles(): MetaTile[] {
-    const pending = this.data.pendingTransactions(this.dept);
-    const approved = this.data
-      .transactionsOf(this.dept)
+    const pending = this.pending();
+    const approved = this.api
+      .transactions()
       .filter((tx) => tx.status === 'approved');
     const pendingValue = pending.reduce((sum, tx) => sum + tx.amount, 0);
     const approvedValue = approved.reduce((sum, tx) => sum + tx.amount, 0);

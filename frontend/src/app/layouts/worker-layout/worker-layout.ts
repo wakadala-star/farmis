@@ -130,6 +130,12 @@ export class WorkerLayout {
           sub: 'Your clock-in and clock-out records, awaiting approval.',
           mob: 'Your clock records',
         };
+      case '/worker/transactions':
+        return {
+          title: 'Transactions',
+          sub: 'Request credit for farm purchases and track your requests.',
+          mob: 'Credit requests',
+        };
       default:
         return {
           title: 'My Tasks',
@@ -144,6 +150,7 @@ export class WorkerLayout {
     { label: 'Data Entry', icon: 'fa-solid fa-pen-to-square', link: '/worker/data-entry' },
     { label: 'Daily Reports', icon: 'fa-solid fa-clipboard', link: '/worker/reports' },
     { label: 'Attendance', icon: 'fa-solid fa-clock', link: '/worker/attendance' },
+    { label: 'Transactions', icon: 'fa-solid fa-money-bill-transfer', link: '/worker/transactions' },
   ];
 
   constructor() {

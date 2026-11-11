@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
   AttendanceRec,
-  FarmDataService,
+  dayKey,
   fmtClock,
   fmtDay,
   fmtDuration,
@@ -10,12 +10,11 @@ import {
   statusTone,
   workedSeconds,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 import { MetaTile } from '../../../shared/management-view/management-view';
 
 /**
  * Supervisor attendance — confirm the department's clock-ins and
- * clock-outs. Records the workers clocked out on arrive as "pending"
+ * clock-outs. Records the workers clocked out arrive as "pending"
  * and move to approved/rejected with one tap.
  */
 @Component({
@@ -23,10 +22,7 @@ import { MetaTile } from '../../../shared/management-view/management-view';
   templateUrl: './supervisor-attendance.html',
 })
 export class SupervisorAttendance {
-  private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
-
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
+  readonly api = inject(FarmApiService);
 
   readonly fmtClock = fmtClock;
   readonly fmtDay = fmtDay;
@@ -36,42 +32,74 @@ export class SupervisorAttendance {
   readonly workedSeconds = workedSeconds;
 
   readonly notice = signal('');
+  readonly error = signal('');
+  /** Attendance id whose decision is in flight (disables both buttons). */
+  readonly decidingId = signal('');
+
+  readonly loading = this.api.deptAttendanceLoading;
+  readonly loadError = this.api.deptAttendanceError;
+
+  constructor() {
+    void this.api.ensure('deptAttendance');
+  }
+
+  retry(): void {
+    void this.api.ensure('deptAttendance');
+  }
 
   /** Counts refresh live as approvals happen. */
   readonly tiles = computed<MetaTile[]>(() => this.buildTiles());
 
   /** Clock-outs waiting for this supervisor's confirmation. */
-  readonly pending = computed(() => this.data.pendingAttendance(this.dept));
+  readonly pending = computed(() =>
+    this.api.deptAttendance().filter((rec) => rec.status === 'pending'),
+  );
 
   /** Every clock record of the department, newest first. */
   readonly recent = computed(() =>
-    this.data
-      .attendanceOf(this.dept)
-      .sort((a, b) => b.clockIn - a.clockIn)
-      .slice(0, 10),
+    this.api.deptAttendance().slice(0, 10),
   );
 
   approve(rec: AttendanceRec): void {
-    this.data.setAttendanceStatus(rec.id, 'approved');
-    this.notice.set(`${rec.worker}’s time record approved.`);
+    void this.decide(rec, 'approved');
   }
 
   reject(rec: AttendanceRec): void {
-    this.data.setAttendanceStatus(rec.id, 'rejected');
-    this.notice.set(`${rec.worker}’s time record rejected.`);
+    void this.decide(rec, 'rejected');
+  }
+
+  private async decide(
+    rec: AttendanceRec,
+    decision: 'approved' | 'rejected',
+  ): Promise<void> {
+    if (this.decidingId()) return;
+    this.decidingId.set(rec.id);
+    try {
+      const res = await this.api.decideAttendance(rec.id, decision);
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      this.error.set('');
+      this.notice.set(
+        `${rec.worker}’s time record ${decision === 'approved' ? 'approved' : 'rejected'}.`,
+      );
+    } finally {
+      this.decidingId.set('');
+    }
   }
 
   private buildTiles(): MetaTile[] {
+    const today = this.api
+      .deptAttendance()
+      .filter((rec) => rec.date === dayKey());
     const present = new Set(
-      this.data
-        .todayAttendance(this.dept)
+      today
         .filter((rec) => rec.status !== 'rejected')
         .map((rec) => rec.worker),
     ).size;
-    const pending = this.data.pendingAttendance(this.dept).length;
-    const approvedToday = this.data
-      .todayAttendance(this.dept)
-      .filter((rec) => rec.status === 'approved').length;
+    const pending = this.pending().length;
+    const approvedToday = today.filter((rec) => rec.status === 'approved').length;
 
     return [
       {

@@ -5,16 +5,13 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
-  FarmDataService,
   GeneratedReport,
   dayKey,
-  dayOffset,
   fmtClock,
-  startOfDay,
+  fmtDay,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 
 const REPORT_TYPES = [
   'Daily operations summary',
@@ -32,7 +29,8 @@ const PERIODS: { value: string; label: string; days: number }[] = [
 /**
  * Supervisor reports — generate a report over the department's daily
  * operations (workers, tasks, entries, attendance, transaction value).
- * Generated reports are kept in the department's history.
+ * Generated reports are kept in the department's history, and the
+ * daily reports filed by the team are listed underneath.
  */
 @Component({
   selector: 'app-supervisor-reports',
@@ -40,15 +38,16 @@ const PERIODS: { value: string; label: string; days: number }[] = [
   templateUrl: './supervisor-reports.html',
 })
 export class SupervisorReports {
-  private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
+  private readonly api = inject(FarmApiService);
 
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
   readonly reportTypes = REPORT_TYPES;
   readonly periods = PERIODS;
   readonly fmtClock = fmtClock;
+  readonly fmtDay = fmtDay;
 
   readonly notice = signal('');
+  readonly error = signal('');
+  readonly generating = signal(false);
 
   /** The report currently shown in the preview card. */
   readonly selected = signal<GeneratedReport | null>(null);
@@ -64,21 +63,57 @@ export class SupervisorReports {
     }),
   });
 
-  get history(): GeneratedReport[] {
-    return this.data.generatedOf(this.dept);
+  /** Generated report history of the department, newest first. */
+  readonly history = this.api.opsReports;
+  readonly loading = this.api.opsReportsLoading;
+  readonly loadError = this.api.opsReportsError;
+
+  /** Daily reports filed by the team (newest first). */
+  readonly filed = this.api.deptReports;
+  readonly filedLoading = this.api.deptReportsLoading;
+  readonly filedError = this.api.deptReportsError;
+
+  constructor() {
+    void this.api.ensure('opsReports');
+    void this.api.ensure('deptReports');
   }
 
-  generate(): void {
+  retry(): void {
+    void this.api.ensure('opsReports');
+  }
+
+  retryFiled(): void {
+    void this.api.ensure('deptReports');
+  }
+
+  async generate(): Promise<void> {
+    if (this.generating()) return;
     const { type, period } = this.form.getRawValue();
     const meta = PERIODS.find((entry) => entry.value === period) ?? PERIODS[0];
     // Period start: local midnight of today, or of the window's first day.
-    const periodStart = startOfDay(
-      meta.days === 0 ? dayKey() : dayOffset(-meta.days),
-    );
+    const periodStart =
+      meta.days === 0
+        ? dayKey()
+        : dayKey(new Date(Date.now() - meta.days * 86_400_000));
 
-    const report = this.data.generateReport(this.dept, type, meta.label, periodStart);
-    this.selected.set(report);
-    this.notice.set(`${meta.label} report generated.`);
+    this.generating.set(true);
+    try {
+      const res = await this.api.generateOpsReport({
+        type,
+        period: meta.label,
+        periodStart,
+      });
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      // The new snapshot lands at the top of the history (newest first).
+      this.selected.set(this.api.opsReports()[0] ?? null);
+      this.error.set('');
+      this.notice.set(`${meta.label} report generated.`);
+    } finally {
+      this.generating.set(false);
+    }
   }
 
   view(report: GeneratedReport): void {

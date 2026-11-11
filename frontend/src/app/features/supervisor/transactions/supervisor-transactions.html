@@ -13,6 +13,12 @@
       <span>{{ notice() }}</span>
     </div>
   }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
 
   <!-- ============ Tiles ============ -->
   <div class="meta-row" aria-label="At a glance">
@@ -46,47 +52,74 @@
       </header>
 
       <div class="widget__body">
-        @for (tx of pending(); track tx.id) {
-          <div class="list-row">
-            <span class="list-row__icon list-row__icon--amber"
-              ><i class="fa-solid fa-receipt"></i
-            ></span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ fmtMoney(tx.amount) }}</strong>
-                <span class="chip chip--amber">Pending</span>
-              </p>
-              <p class="list-row__sub" [title]="tx.reason">
-                {{ tx.worker }} · {{ tx.reason }}
-              </p>
-              <p class="list-row__meta">
-                {{ fmtDay(dayOf(tx.when)) }} · {{ fmtClock(tx.when) }}
-              </p>
-            </div>
-            <div class="list-row__side">
-              <button
-                type="button"
-                class="btn-mini btn-mini--ok"
-                (click)="approve(tx)"
-              >
-                <i class="fa-solid fa-check"></i>
-                Approve
-              </button>
-              <button
-                type="button"
-                class="btn-mini btn-mini--no"
-                (click)="reject(tx)"
-              >
-                <i class="fa-solid fa-xmark"></i>
-                Reject
-              </button>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-circle-check"></i>
-            No credit transactions waiting for approval.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading credit requests…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (tx of pending(); track tx.id) {
+            <div class="list-row">
+              <span class="list-row__icon list-row__icon--amber"
+                ><i class="fa-solid fa-receipt"></i
+              ></span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{
+                    fmtMoney(tx.amount)
+                  }}</strong>
+                  <span class="chip chip--amber">Pending</span>
+                </p>
+                <p class="list-row__sub" [title]="tx.reason">
+                  {{ tx.worker }} · {{ tx.reason }}
+                </p>
+                <p class="list-row__meta">
+                  {{ fmtDay(dayOf(tx.when)) }} · {{ fmtClock(tx.when) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                <button
+                  type="button"
+                  class="btn-mini btn-mini--ok"
+                  [disabled]="decidingId() === tx.id"
+                  (click)="approve(tx)"
+                >
+                  @if (decidingId() === tx.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-check"></i>
+                  }
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="btn-mini btn-mini--no"
+                  [disabled]="decidingId() === tx.id"
+                  (click)="reject(tx)"
+                >
+                  @if (decidingId() === tx.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-xmark"></i>
+                  }
+                  Reject
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-circle-check"></i>
+              No credit transactions waiting for approval.
+            </p>
+          }
         }
       </div>
     </article>
@@ -102,28 +135,45 @@
       </header>
 
       <div class="widget__body">
-        @for (tx of history(); track tx.id) {
-          <div class="list-row">
-            <span class="list-row__icon list-row__icon--blue"
-              ><i class="fa-solid fa-receipt"></i
-            ></span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ fmtMoney(tx.amount) }}</strong>
-                <span [class]="'chip chip--' + statusTone(tx.status)">{{
-                  statusLabel(tx.status)
-                }}</span>
-              </p>
-              <p class="list-row__sub" [title]="tx.reason">
-                {{ tx.worker }} · {{ tx.reason }}
-              </p>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-            Decisions you make will be listed here.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading credit requests…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (tx of history(); track tx.id) {
+            <div class="list-row">
+              <span class="list-row__icon list-row__icon--blue"
+                ><i class="fa-solid fa-receipt"></i
+              ></span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{
+                    fmtMoney(tx.amount)
+                  }}</strong>
+                  <span [class]="'chip chip--' + statusTone(tx.status)">{{
+                    statusLabel(tx.status)
+                  }}</span>
+                </p>
+                <p class="list-row__sub" [title]="tx.reason">
+                  {{ tx.worker }} · {{ tx.reason }}
+                </p>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              Decisions you make will be listed here.
+            </p>
+          }
         }
       </div>
     </article>

@@ -6,24 +6,22 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
   FarmTask,
-  FarmDataService,
   TaskStatus,
   dayKey,
   fmtDay,
   statusLabel,
   statusTone,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 
 const STATUS_FLOW: TaskStatus[] = ['open', 'in-progress', 'done'];
 
 /**
  * Supervisor tasks — assign work to a worker of the department and
  * track every task's status. New assignments appear immediately on
- * the worker's "My Tasks" screen (shared mock store).
+ * the worker's "My Tasks" screen (shared backend).
  */
 @Component({
   selector: 'app-supervisor-tasks',
@@ -31,11 +29,8 @@ const STATUS_FLOW: TaskStatus[] = ['open', 'in-progress', 'done'];
   templateUrl: './supervisor-tasks.html',
 })
 export class SupervisorTasks implements OnInit {
-  private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
+  private readonly api = inject(FarmApiService);
   private readonly route = inject(ActivatedRoute);
-
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
 
   readonly statusTone = statusTone;
   readonly statusLabel = statusLabel;
@@ -43,6 +38,9 @@ export class SupervisorTasks implements OnInit {
 
   readonly notice = signal('');
   readonly error = signal('');
+  readonly submitting = signal(false);
+  /** Task id whose Advance request is in flight (disables that button). */
+  readonly advancingId = signal('');
 
   readonly form = new FormGroup({
     title: new FormControl('', {
@@ -60,8 +58,22 @@ export class SupervisorTasks implements OnInit {
     notes: new FormControl('', { nonNullable: true }),
   });
 
+  /** Active team workers of the department (select holds their email). */
+  readonly workers = this.api.workers;
+  readonly workersLoading = this.api.workersLoading;
+
+  /** Every live task of the department, due date first. */
+  readonly tasks = this.api.deptTasks;
+  readonly loading = this.api.deptTasksLoading;
+  readonly loadError = this.api.deptTasksError;
+
+  constructor() {
+    void this.api.ensure('deptTasks');
+    void this.api.ensure('workers');
+  }
+
   ngOnInit(): void {
-    // /supervisor/tasks?assignee=Name — quick-assign from the Workers page.
+    // /supervisor/tasks?assignee=email — quick-assign from the Workers page.
     const preset = this.route.snapshot.queryParamMap.get('assignee');
     if (preset) {
       this.form.controls.assignee.setValue(preset);
@@ -69,12 +81,8 @@ export class SupervisorTasks implements OnInit {
     this.form.controls.due.setValue(this.defaultDue());
   }
 
-  get workers(): { name: string }[] {
-    return this.data.workersOf(this.dept);
-  }
-
-  get tasks(): FarmTask[] {
-    return this.data.tasksOf(this.dept);
+  retry(): void {
+    void this.api.ensure('deptTasks');
   }
 
   invalid(control: 'title' | 'assignee' | 'due'): boolean {
@@ -82,26 +90,48 @@ export class SupervisorTasks implements OnInit {
     return field.invalid && (field.touched || field.dirty);
   }
 
-  assign(): void {
+  async assign(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set('Fill in the task title, worker and due date.');
       return;
     }
+    if (this.submitting()) return;
 
     const { title, assignee, due, notes } = this.form.getRawValue();
-    this.data.assignTask({ title, notes, dept: this.dept, assignee, due });
-    this.form.reset({ title: '', assignee, due: this.defaultDue(), notes: '' });
-    this.error.set('');
-    this.notice.set(`Task assigned to ${assignee}.`);
+    this.submitting.set(true);
+    try {
+      const res = await this.api.assignTask({ title, assignee, due, notes });
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      this.form.reset({ title: '', assignee, due: this.defaultDue(), notes: '' });
+      this.error.set('');
+      this.notice.set(res.message);
+    } finally {
+      this.submitting.set(false);
+    }
   }
 
   /** open → in-progress → done → open (cycles). */
-  advance(task: FarmTask): void {
+  async advance(task: FarmTask): Promise<void> {
+    if (this.advancingId()) return;
     const index = STATUS_FLOW.indexOf(task.status);
     const next = STATUS_FLOW[(index + 1) % STATUS_FLOW.length];
-    this.data.setTaskStatus(task.id, next);
-    this.notice.set(`“${task.title}” marked ${statusLabel(next).toLowerCase()}.`);
+
+    this.advancingId.set(task.id);
+    try {
+      const res = await this.api.advanceTask(task.id, next);
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      this.error.set('');
+      this.notice.set(`“${task.title}” marked ${statusLabel(next).toLowerCase()}.`);
+    } finally {
+      this.advancingId.set('');
+    }
   }
 
   dueTone(task: FarmTask): string {

@@ -9,7 +9,7 @@ import {
 } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
-import { FarmDataService } from '../../core/farm-data.service';
+import { FarmApiService } from '../../core/farm-api.service';
 import {
   DEPT_LABELS,
   DEPT_SHORT,
@@ -36,8 +36,7 @@ interface PageMeta {
  * supervisors (the session's department scopes every screen).
  *
  * Six working modules: Dashboard, Tasks, Reports, Attendance,
- * Transactions and Workers. Sign out is fully wired to the mock
- * auth service.
+ * Transactions and Workers — all reading the live backend.
  */
 @Component({
   selector: 'app-supervisor-layout',
@@ -47,7 +46,7 @@ interface PageMeta {
 export class SupervisorLayout {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly data = inject(FarmDataService);
+  readonly api = inject(FarmApiService);
 
   readonly drawerOpen = signal(false);
   readonly collapsed = signal(false);
@@ -62,11 +61,7 @@ export class SupervisorLayout {
   );
 
   /** Badge on the bell: everything still waiting for this supervisor. */
-  readonly pendingCount = computed(
-    () =>
-      this.data.pendingAttendance(this.dept()).length +
-      this.data.pendingTransactions(this.dept()).length,
-  );
+  readonly pendingCount = this.api.supervisorPendingCount;
 
   /** Active top-level path, kept in sync with the router. */
   private readonly path = signal('');
@@ -126,6 +121,11 @@ export class SupervisorLayout {
 
   constructor() {
     this.path.set(this.pathOf(this.router.url));
+
+    // Attendance + credit feeds power the bell badge across pages.
+    void this.api.ensure('deptAttendance');
+    void this.api.ensure('transactions');
+
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),

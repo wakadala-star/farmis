@@ -62,8 +62,11 @@
                 formControlName="assignee"
               >
                 <option value="" disabled>Choose a worker</option>
-                @for (worker of workers; track worker.name) {
-                  <option [value]="worker.name">{{ worker.name }}</option>
+                @if (workersLoading()) {
+                  <option value="" disabled>Loading team…</option>
+                }
+                @for (worker of workers(); track worker.id) {
+                  <option [value]="worker.email">{{ worker.name }}</option>
                 }
               </select>
             </div>
@@ -109,9 +112,18 @@
             </div>
           </div>
 
-          <button class="btn btn--primary" type="submit">
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
             <span>Assign Task</span>
-            <i class="fa-solid fa-arrow-right"></i>
+            @if (submitting()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-arrow-right"></i>
+            }
           </button>
         </form>
       </div>
@@ -123,47 +135,67 @@
         <i class="fa-solid fa-list-check widget__icon"></i>
         <h2 class="widget__title">Department Tasks</h2>
         <div class="widget__action">
-          <span class="badge-count">{{ tasks.length }}</span>
+          <span class="badge-count">{{ tasks().length }}</span>
         </div>
       </header>
 
       <div class="widget__body">
-        @for (task of tasks; track task.id) {
-          <div class="list-row">
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ task.title }}</strong>
-                <span [class]="'chip chip--' + dueTone(task)"
-                  >Due {{ fmtDay(task.due) }}</span
-                >
-              </p>
-              <p class="list-row__sub">
-                {{ task.assignee }}
-                @if (task.notes) {
-                  · {{ task.notes }}
-                }
-              </p>
-            </div>
-            <div class="list-row__side">
-              <span [class]="'chip chip--' + statusTone(task.status)">{{
-                statusLabel(task.status)
-              }}</span>
-              <button
-                type="button"
-                class="btn-mini"
-                title="Move to the next status"
-                (click)="advance(task)"
-              >
-                <i class="fa-solid fa-rotate-right"></i>
-                Advance
-              </button>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-list-check"></i>
-            No tasks yet — assign the first one with the form.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading department tasks…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (task of tasks(); track task.id) {
+            <div class="list-row">
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ task.title }}</strong>
+                  <span [class]="'chip chip--' + dueTone(task)"
+                    >Due {{ fmtDay(task.due) }}</span
+                  >
+                </p>
+                <p class="list-row__sub">
+                  {{ task.assignee }}
+                  @if (task.notes) {
+                    · {{ task.notes }}
+                  }
+                </p>
+              </div>
+              <div class="list-row__side">
+                <span [class]="'chip chip--' + statusTone(task.status)">{{
+                  statusLabel(task.status)
+                }}</span>
+                <button
+                  type="button"
+                  class="btn-mini"
+                  title="Move to the next status"
+                  [disabled]="advancingId() === task.id"
+                  (click)="advance(task)"
+                >
+                  @if (advancingId() === task.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-rotate-right"></i>
+                  }
+                  Advance
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-list-check"></i>
+              No tasks yet — assign the first one with the form.
+            </p>
+          }
         }
       </div>
     </article>

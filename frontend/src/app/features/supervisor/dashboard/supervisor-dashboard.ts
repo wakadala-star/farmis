@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
-  AttendanceRec,
-  FarmDataService,
+  dayKey,
   fmtClock,
   fmtDay,
   fmtDuration,
@@ -10,7 +10,6 @@ import {
   statusTone,
   workedSeconds,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 import { MetaTile } from '../../../shared/management-view/management-view';
 
 interface ApprovalRow {
@@ -23,7 +22,8 @@ interface ApprovalRow {
 /**
  * Supervisor dashboard — four department tiles plus the two lists a
  * supervisor opens first: today's clock-ins and everything still
- * waiting for approval (attendance + credit transactions).
+ * waiting for approval (attendance + credit transactions). All lists
+ * come from the live backend, scoped to the session's department.
  */
 @Component({
   selector: 'app-supervisor-dashboard',
@@ -31,9 +31,8 @@ interface ApprovalRow {
 })
 export class SupervisorDashboard {
   private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
+  readonly api = inject(FarmApiService);
 
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
   readonly firstName = this.auth.fullName().split(' ')[0];
 
   /** Shared formatting helpers for the template. */
@@ -41,72 +40,107 @@ export class SupervisorDashboard {
   readonly statusTone = statusTone;
   readonly statusLabel = statusLabel;
 
-  readonly tiles: MetaTile[] = this.buildTiles();
+  constructor() {
+    void this.api.ensure('workers');
+    void this.api.ensure('deptTasks');
+    void this.api.ensure('deptAttendance');
+    void this.api.ensure('transactions');
+  }
 
-  /** Today's clock-ins for the department, newest first. */
-  readonly todayRows: {
-    rec: AttendanceRec;
-    initial: string;
-    duration: string;
-  }[] = this.data.todayAttendance(this.dept).map((rec) => ({
-    rec,
-    initial: rec.worker.charAt(0),
-    duration: fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)),
-  }));
+  /** Any of the four feeds still loading (tiles show '—' meanwhile). */
+  readonly loading = computed(
+    () =>
+      this.api.workersLoading() ||
+      this.api.deptTasksLoading() ||
+      this.api.deptAttendanceLoading() ||
+      this.api.transactionsLoading(),
+  );
 
-  /** Attendance waiting for approval + credit transactions waiting. */
-  readonly approvalRows: ApprovalRow[] = this.buildApprovals();
+  readonly loadError = computed(
+    () =>
+      this.api.workersError() ||
+      this.api.deptTasksError() ||
+      this.api.deptAttendanceError() ||
+      this.api.transactionsError() ||
+      '',
+  );
 
-  private buildTiles(): MetaTile[] {
-    const workers = this.data.workersOf(this.dept).length;
-    const open = this.data
-      .tasksOf(this.dept)
+  retry(): void {
+    void this.api.ensure('workers');
+    void this.api.ensure('deptTasks');
+    void this.api.ensure('deptAttendance');
+    void this.api.ensure('transactions');
+  }
+
+  readonly tiles = computed<MetaTile[]>(() => {
+    const loading = this.loading();
+    const workers = this.api.workers().length;
+    const open = this.api
+      .deptTasks()
       .filter((task) => task.status !== 'done').length;
+    const today = this.api
+      .deptAttendance()
+      .filter((rec) => rec.date === dayKey());
     const present = new Set(
-      this.data
-        .todayAttendance(this.dept)
+      today
         .filter((rec) => rec.status !== 'rejected')
         .map((rec) => rec.worker),
     ).size;
     const approvals =
-      this.data.pendingAttendance(this.dept).length +
-      this.data.pendingTransactions(this.dept).length;
+      this.api.deptAttendance().filter((rec) => rec.status === 'pending').length +
+      this.api.transactions().filter((tx) => tx.status === 'pending').length;
+
+    const value = (n: number) => (loading ? '—' : String(n));
 
     return [
       {
         icon: 'fa-solid fa-users',
         tone: 'green',
-        value: String(workers),
+        value: value(workers),
         label: 'Workers',
         hint: 'Active in your department',
       },
       {
         icon: 'fa-solid fa-list-check',
         tone: 'blue',
-        value: String(open),
+        value: value(open),
         label: 'Open tasks',
         hint: 'Assigned and not yet completed',
       },
       {
         icon: 'fa-solid fa-user-check',
         tone: 'green',
-        value: String(present),
+        value: value(present),
         label: 'Present today',
         hint: 'Clocked in or worked earlier today',
       },
       {
         icon: 'fa-solid fa-hourglass-half',
         tone: 'amber',
-        value: String(approvals),
+        value: value(approvals),
         label: 'Awaiting approval',
         hint: 'Attendance records and credit transactions',
       },
     ];
-  }
+  });
 
-  private buildApprovals(): ApprovalRow[] {
-    const attendance: ApprovalRow[] = this.data
-      .pendingAttendance(this.dept)
+  /** Today's clock-ins for the department, newest first. */
+  readonly todayRows = computed(() =>
+    this.api
+      .deptAttendance()
+      .filter((rec) => rec.date === dayKey())
+      .map((rec) => ({
+        rec,
+        initial: rec.worker.charAt(0),
+        duration: fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)),
+      })),
+  );
+
+  /** Attendance waiting for approval + credit transactions waiting. */
+  readonly approvalRows = computed<ApprovalRow[]>(() => {
+    const attendance: ApprovalRow[] = this.api
+      .deptAttendance()
+      .filter((rec) => rec.status === 'pending')
       .map((rec) => ({
         id: rec.id,
         icon: 'fa-solid fa-clock',
@@ -116,8 +150,9 @@ export class SupervisorDashboard {
         } · ${fmtDuration(workedSeconds(rec.clockIn, rec.clockOut))}`,
       }));
 
-    const transactions: ApprovalRow[] = this.data
-      .pendingTransactions(this.dept)
+    const transactions: ApprovalRow[] = this.api
+      .transactions()
+      .filter((tx) => tx.status === 'pending')
       .map((tx) => ({
         id: tx.id,
         icon: 'fa-solid fa-money-bill-transfer',
@@ -126,5 +161,5 @@ export class SupervisorDashboard {
       }));
 
     return [...attendance, ...transactions];
-  }
+  });
 }

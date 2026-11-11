@@ -14,6 +14,12 @@
       <span>{{ notice() }}</span>
     </div>
   }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
 
   <div class="ws__grid">
     <!-- ============ Generator ============ -->
@@ -49,9 +55,18 @@
             </div>
           </div>
 
-          <button class="btn btn--primary" type="submit">
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="generating()"
+            [attr.aria-busy]="generating()"
+          >
             <span>Generate Report</span>
-            <i class="fa-solid fa-chart-column"></i>
+            @if (generating()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-chart-column"></i>
+            }
           </button>
         </form>
       </div>
@@ -103,37 +118,105 @@
       <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
       <h2 class="widget__title">Generated Reports</h2>
       <div class="widget__action">
-        <span class="badge-count">{{ history.length }}</span>
+        <span class="badge-count">{{ history().length }}</span>
       </div>
     </header>
 
     <div class="widget__body">
-      @for (report of history; track report.id) {
-        <div
-          class="list-row list-row--clickable"
-          (click)="view(report)"
-          (keydown.enter)="view(report)"
-          role="button"
-          tabindex="0"
-        >
-          <span class="list-row__icon list-row__icon--blue"
-            ><i class="fa-solid fa-file-lines"></i
-          ></span>
-          <div class="list-row__main">
-            <p class="list-row__title">{{ report.type }}</p>
-            <p class="list-row__sub">
-              {{ report.period }} · generated at {{ fmtClock(report.when) }}
-            </p>
-          </div>
-          <div class="list-row__side">
-            <span class="chip chip--neutral">View</span>
-          </div>
-        </div>
-      } @empty {
+      @if (loading()) {
         <p class="empty-state">
-          <i class="fa-solid fa-clock-rotate-left"></i>
-          Reports you generate are kept here.
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          Loading report history…
         </p>
+      } @else if (loadError()) {
+        <div class="form-alert form-alert--error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ loadError() }}</span>
+          <button type="button" class="btn-mini" (click)="retry()">
+            Retry
+          </button>
+        </div>
+      } @else {
+        @for (report of history(); track report.id) {
+          <div
+            class="list-row list-row--clickable"
+            (click)="view(report)"
+            (keydown.enter)="view(report)"
+            role="button"
+            tabindex="0"
+          >
+            <span class="list-row__icon list-row__icon--blue"
+              ><i class="fa-solid fa-file-lines"></i
+            ></span>
+            <div class="list-row__main">
+              <p class="list-row__title">{{ report.type }}</p>
+              <p class="list-row__sub">
+                {{ report.period }} · generated at {{ fmtClock(report.when) }}
+              </p>
+            </div>
+            <div class="list-row__side">
+              <span class="chip chip--neutral">View</span>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            Reports you generate are kept here.
+          </p>
+        }
+      }
+    </div>
+  </article>
+
+  <!-- ============ Filed by workers ============ -->
+  <article class="widget">
+    <header class="widget__head">
+      <i class="fa-solid fa-clipboard widget__icon"></i>
+      <h2 class="widget__title">Filed by Workers</h2>
+      <div class="widget__action">
+        <span class="badge-count">{{ filed().length }}</span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @if (filedLoading()) {
+        <p class="empty-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          Loading filed reports…
+        </p>
+      } @else if (filedError()) {
+        <div class="form-alert form-alert--error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ filedError() }}</span>
+          <button type="button" class="btn-mini" (click)="retryFiled()">
+            Retry
+          </button>
+        </div>
+      } @else {
+        @for (report of filed(); track report.id) {
+          <div class="list-row list-row--stacked">
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ report.worker }}</strong>
+                <span class="chip chip--blue">{{ report.hours }}h</span>
+                <span class="chip chip--neutral">{{
+                  fmtDay(report.date)
+                }}</span>
+              </p>
+              <p class="list-row__sub">
+                {{ report.task }}
+              </p>
+              <p class="list-row__sub list-row__sub--wrap">
+                {{ report.summary }}
+              </p>
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-regular fa-clipboard"></i>
+            Nobody on your team has filed a report yet.
+          </p>
+        }
       }
     </div>
   </article>

@@ -72,9 +72,40 @@
             }
           </div>
 
-          <button class="btn btn--primary" type="submit">
+          <div class="field">
+            <label class="field__label" for="w-password">Initial password</label>
+            <div class="field__box">
+              <i class="fa-solid fa-key field__icon"></i>
+              <input
+                id="w-password"
+                type="password"
+                class="input"
+                [class.is-invalid]="invalid('password')"
+                placeholder="At least 6 characters"
+                formControlName="password"
+              />
+            </div>
+            @if (invalid('password')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Set an initial password of at least 6 characters — give it to
+                the worker so they can sign in.
+              </span>
+            }
+          </div>
+
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
             <span>Recruit Worker</span>
-            <i class="fa-solid fa-user-plus"></i>
+            @if (submitting()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-user-plus"></i>
+            }
           </button>
         </form>
       </div>
@@ -91,44 +122,64 @@
       </header>
 
       <div class="widget__body">
-        @for (worker of workers(); track worker.id) {
-          <div class="list-row">
-            <span class="list-row__avatar">{{ worker.name.charAt(0) }}</span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ worker.name }}</strong>
-                <span class="chip chip--green">Active</span>
-              </p>
-              <p class="list-row__sub">
-                {{ worker.email }} · joined {{ fmtDay(worker.joined) }}
-              </p>
-            </div>
-            <div class="list-row__side">
-              <button
-                type="button"
-                class="btn-mini"
-                title="Assign a task to this worker"
-                (click)="assign(worker)"
-              >
-                <i class="fa-solid fa-list-check"></i>
-                Assign
-              </button>
-              <button
-                type="button"
-                class="btn-mini btn-mini--no"
-                title="Remove from the department"
-                (click)="remove(worker)"
-              >
-                <i class="fa-solid fa-trash"></i>
-                Remove
-              </button>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-user-plus"></i>
-            No workers yet — recruit the first one with the form.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading your team…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (worker of workers(); track worker.id) {
+            <div class="list-row">
+              <span class="list-row__avatar">{{ worker.name.charAt(0) }}</span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ worker.name }}</strong>
+                  <span class="chip chip--green">Active</span>
+                </p>
+                <p class="list-row__sub">
+                  {{ worker.email }} · joined {{ fmtDay(worker.joined) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                <button
+                  type="button"
+                  class="btn-mini"
+                  title="Assign a task to this worker"
+                  (click)="assign(worker)"
+                >
+                  <i class="fa-solid fa-list-check"></i>
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  class="btn-mini btn-mini--no"
+                  title="Remove from the department"
+                  [disabled]="removingId() === worker.id"
+                  (click)="remove(worker)"
+                >
+                  @if (removingId() === worker.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-trash"></i>
+                  }
+                  Remove
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-user-plus"></i>
+              No workers yet — recruit the first one with the form.
+            </p>
+          }
         }
       </div>
     </article>

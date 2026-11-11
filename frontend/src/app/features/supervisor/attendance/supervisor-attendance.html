@@ -13,6 +13,12 @@
       <span>{{ notice() }}</span>
     </div>
   }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
 
   <!-- ============ Tiles ============ -->
   <div class="meta-row" aria-label="At a glance">
@@ -42,44 +48,69 @@
       </header>
 
       <div class="widget__body">
-        @for (rec of pending(); track rec.id) {
-          <div class="list-row">
-            <span class="list-row__avatar">{{ rec.worker.charAt(0) }}</span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ rec.worker }}</strong>
-                <span class="chip chip--amber">Pending</span>
-              </p>
-              <p class="list-row__sub">
-                {{ fmtDay(rec.date) }} · {{ fmtClock(rec.clockIn) }} →
-                {{ rec.clockOut ? fmtClock(rec.clockOut) : '—' }} ·
-                {{ fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)) }}
-              </p>
-            </div>
-            <div class="list-row__side">
-              <button
-                type="button"
-                class="btn-mini btn-mini--ok"
-                (click)="approve(rec)"
-              >
-                <i class="fa-solid fa-check"></i>
-                Approve
-              </button>
-              <button
-                type="button"
-                class="btn-mini btn-mini--no"
-                (click)="reject(rec)"
-              >
-                <i class="fa-solid fa-xmark"></i>
-                Reject
-              </button>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-circle-check"></i>
-            No clock-outs waiting — your team’s records are all confirmed.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading clock records…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (rec of pending(); track rec.id) {
+            <div class="list-row">
+              <span class="list-row__avatar">{{ rec.worker.charAt(0) }}</span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ rec.worker }}</strong>
+                  <span class="chip chip--amber">Pending</span>
+                </p>
+                <p class="list-row__sub">
+                  {{ fmtDay(rec.date) }} · {{ fmtClock(rec.clockIn) }} →
+                  {{ rec.clockOut ? fmtClock(rec.clockOut) : '—' }} ·
+                  {{ fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                <button
+                  type="button"
+                  class="btn-mini btn-mini--ok"
+                  [disabled]="decidingId() === rec.id"
+                  (click)="approve(rec)"
+                >
+                  @if (decidingId() === rec.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-check"></i>
+                  }
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="btn-mini btn-mini--no"
+                  [disabled]="decidingId() === rec.id"
+                  (click)="reject(rec)"
+                >
+                  @if (decidingId() === rec.id) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fa-solid fa-xmark"></i>
+                  }
+                  Reject
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-circle-check"></i>
+              No clock-outs waiting — your team’s records are all confirmed.
+            </p>
+          }
         }
       </div>
     </article>
@@ -95,27 +126,42 @@
       </header>
 
       <div class="widget__body">
-        @for (rec of recent(); track rec.id) {
-          <div class="list-row">
-            <span class="list-row__avatar">{{ rec.worker.charAt(0) }}</span>
-            <div class="list-row__main">
-              <p class="list-row__title">{{ rec.worker }}</p>
-              <p class="list-row__sub">
-                {{ fmtDay(rec.date) }} ·
-                {{ fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)) }}
-              </p>
-            </div>
-            <div class="list-row__side">
-              <span [class]="'chip chip--' + statusTone(rec.status)">{{
-                statusLabel(rec.status)
-              }}</span>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-regular fa-clock"></i>
-            No clock records yet for your department.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading clock records…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (rec of recent(); track rec.id) {
+            <div class="list-row">
+              <span class="list-row__avatar">{{ rec.worker.charAt(0) }}</span>
+              <div class="list-row__main">
+                <p class="list-row__title">{{ rec.worker }}</p>
+                <p class="list-row__sub">
+                  {{ fmtDay(rec.date) }} ·
+                  {{ fmtDuration(workedSeconds(rec.clockIn, rec.clockOut)) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                <span [class]="'chip chip--' + statusTone(rec.status)">{{
+                  statusLabel(rec.status)
+                }}</span>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-regular fa-clock"></i>
+              No clock records yet for your department.
+            </p>
+          }
         }
       </div>
     </article>

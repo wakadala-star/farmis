@@ -13,6 +13,7 @@ import { WorkerTasks } from './features/worker/tasks/worker-tasks';
 import { WorkerDataEntry } from './features/worker/data-entry/worker-data-entry';
 import { WorkerReports } from './features/worker/reports/worker-reports';
 import { WorkerAttendance } from './features/worker/attendance/worker-attendance';
+import { WorkerTransactions } from './features/worker/transactions/worker-transactions';
 import { SignIn } from './features/auth/sign-in/sign-in';
 import { SignUp } from './features/auth/sign-up/sign-up';
 import { AuthLayout } from './layouts/auth-layout/auth-layout';
@@ -30,7 +31,8 @@ import { WorkerLayout } from './layouts/worker-layout/worker-layout';
  *   owner      → /dashboard  (+ /crops, /livestock)
  *   supervisor → /supervisor (+ /tasks, /reports, /attendance,
  *                             /transactions, /workers)
- *   worker     → /worker     (+ /data-entry, /reports, /attendance)
+ *   worker     → /worker     (+ /data-entry, /reports, /attendance,
+ *                             /transactions)
  *
  * Each workspace uses a single shell instance so the sidebar, topbar,
  * drawer and bottom-nav state survive navigation between its pages.
@@ -89,6 +91,7 @@ export const routes: Routes = [
       { path: 'data-entry', component: WorkerDataEntry },
       { path: 'reports', component: WorkerReports },
       { path: 'attendance', component: WorkerAttendance },
+      { path: 'transactions', component: WorkerTransactions },
     ],
   },
 
