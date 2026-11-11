@@ -41,8 +41,20 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/auth/signout`| —               | Clears the cookie                          |
 | GET    | `/api/auth/me`     | required        | Current session (fresh from DB)            |
 | GET    | `/api/users`       | owner/supervisor| Owner: all users · Supervisor: own department · Worker: 403 |
+| GET    | `/api/tasks/mine`  | required        | Tasks assigned to the signed-in user (cancelled hidden, mapped to open/in-progress/done) |
+| GET    | `/api/attendance/mine` | required    | Own clock records, newest first (`running` while open, then approval state) |
+| POST   | `/api/attendance/clock-in` | worker   | Open today's shift — one shift per day, idempotent while running |
+| POST   | `/api/attendance/clock-out` | worker   | Close the open shift → awaits supervisor approval |
+| GET    | `/api/entries`     | required        | Department feed, newest first (owner: every department) |
+| POST   | `/api/entries`     | worker          | Record a field/livestock activity (department from session) |
+| GET    | `/api/reports/mine`| required        | Own daily reports, newest first            |
+| POST   | `/api/reports`     | worker          | File a daily report (free-text task, 1–24 h) |
 
 All responses are JSON: `{ ok: boolean, message: string, ... }`.
+
+Clock and entry writes carry the **client's wall clock** (`date: 'YYYY-MM-DD'`,
+`time: 'HH:MM'`) so the stored DATE + TIME are the farm's local time, exactly
+what the worker's screen renders back.
 
 Every signup/signin attempt is recorded in the `auth_attempts` table
 (action, outcome, email, reason code, IP — never passwords), so failures
