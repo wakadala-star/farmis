@@ -18,6 +18,7 @@ function readToken(req) {
 async function loadUser(userId) {
   const { rows } = await query(
     `SELECT u.user_id, u.first_name, u.last_name, u.email,
+            u.department_id,
             u.employment_status, r.role_name, d.department_name
        FROM users u
        JOIN roles r      ON r.role_id = u.role_id
@@ -36,6 +37,7 @@ function toSession(row) {
     email: row.email,
     role: row.role_name,                        // 'owner' | 'supervisor' | 'worker'
     department: departmentCode(row.department_name), // 'crops' | 'livestock' | null
+    departmentId: row.department_id ?? null,    // server-side scoping (not used by the UI)
   };
 }
 

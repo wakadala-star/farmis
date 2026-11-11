@@ -4,6 +4,10 @@ const cookieParser = require('cookie-parser');
 const { env } = require('./config/env');
 const authRoutes = require('./routes/auth.routes');
 const usersRoutes = require('./routes/users.routes');
+const tasksRoutes = require('./routes/tasks.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
+const entriesRoutes = require('./routes/entries.routes');
+const reportsRoutes = require('./routes/reports.routes');
 
 const app = express();
 
@@ -28,6 +32,10 @@ app.use(cookieParser());
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'farmis-api' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/entries', entriesRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Unknown routes → JSON 404 (not an HTML page).
 app.use((req, res) => {
