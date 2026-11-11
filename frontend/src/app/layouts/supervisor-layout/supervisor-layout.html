@@ -26,27 +26,7 @@
 
     <div class="sidebar__foot">
       @if (userMenuOpen()) {
-        <div class="user-menu" role="menu">
-          <button
-            type="button"
-            class="user-menu__item"
-            role="menuitem"
-            (click)="userMenuOpen.set(false)"
-          >
-            <i class="fa-regular fa-user"></i>
-            <span>My Profile</span>
-            <span class="badge-soon">Soon</span>
-          </button>
-          <button
-            type="button"
-            class="user-menu__item user-menu__item--danger"
-            role="menuitem"
-            (click)="signOut()"
-          >
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Sign out</span>
-          </button>
-        </div>
+        <app-profile-menu (signedOut)="signOut()" />
       }
 
       <button
@@ -56,7 +36,11 @@
         [attr.aria-expanded]="userMenuOpen()"
         aria-haspopup="menu"
       >
-        <span class="avatar avatar--md">{{ auth.initials() }}</span>
+        @if (auth.avatarSrc(); as src) {
+          <span class="avatar avatar--md"><img [src]="src" alt="" /></span>
+        } @else {
+          <span class="avatar avatar--md">{{ auth.initials() }}</span>
+        }
         <span class="user-card__meta">
           <span class="user-card__name">{{ auth.fullName() }}</span>
           <span class="user-card__role">{{ roleLabel() }}</span>
@@ -110,9 +94,21 @@
           <i class="fa-solid fa-chevron-down"></i>
         </div>
 
-        <span class="avatar avatar--md" [title]="auth.fullName()">
-          {{ auth.initials() }}
-        </span>
+        <button
+          type="button"
+          class="avatar avatar--md avatar--btn"
+          [title]="'Profile — ' + auth.fullName()"
+          (click)="toggleUserMenu()"
+          [attr.aria-expanded]="userMenuOpen()"
+          aria-haspopup="menu"
+          aria-label="Open profile menu"
+        >
+          @if (auth.avatarSrc(); as src) {
+            <img [src]="src" alt="" />
+          } @else {
+            {{ auth.initials() }}
+          }
+        </button>
       </div>
     </header>
 

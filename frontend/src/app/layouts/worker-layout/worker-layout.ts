@@ -20,6 +20,7 @@ import { FarmApiService } from '../../core/farm-api.service';
 import { fmtClock, fmtHMS } from '../../core/farm-data.service';
 import { DEPT_SHORT, Department, ROLE_LABELS } from '../../core/models';
 import { Brand } from '../../shared/brand/brand';
+import { ProfileMenu } from '../../shared/profile-menu/profile-menu';
 
 interface NavItem {
   label: string;
@@ -45,7 +46,7 @@ interface PageMeta {
  */
 @Component({
   selector: 'app-worker-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand, ProfileMenu],
   templateUrl: './worker-layout.html',
 })
 export class WorkerLayout {
@@ -214,9 +215,15 @@ export class WorkerLayout {
 
   closeDrawer(): void {
     this.drawerOpen.set(false);
+    this.userMenuOpen.set(false);
   }
 
   toggleUserMenu(): void {
+    // The profile dropdown lives in the sidebar; on phones/tablets the
+    // topbar avatar has to reveal the drawer first so the panel shows.
+    if (!this.isWide()) {
+      this.drawerOpen.set(true);
+    }
     this.userMenuOpen.update((open) => !open);
   }
 

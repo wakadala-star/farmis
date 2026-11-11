@@ -1,0 +1,94 @@
+<div class="user-menu user-menu--profile" role="menu" aria-label="Profile">
+  <div class="profile-head">
+    <span class="profile-photo-wrap">
+      <button
+        type="button"
+        class="profile-photo"
+        (click)="photoInput.click()"
+        [disabled]="uploading()"
+        [title]="auth.avatarSrc() ? 'Change profile photo' : 'Add a profile photo'"
+      >
+        <span class="profile-photo__frame">
+          @if (auth.avatarSrc(); as src) {
+            <img class="profile-photo__img" [src]="src" alt="" />
+          } @else {
+            {{ auth.initials() }}
+          }
+        </span>
+        <span class="profile-photo__badge" aria-hidden="true">
+          <i class="fa-solid fa-camera"></i>
+        </span>
+      </button>
+      @if (auth.avatarSrc()) {
+        <button
+          type="button"
+          class="profile-photo__remove"
+          title="Remove photo"
+          aria-label="Remove profile photo"
+          (click)="removePhoto($event)"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      }
+    </span>
+    <input
+      #photoInput
+      type="file"
+      class="profile-photo__input"
+      accept="image/jpeg,image/png,image/webp"
+      (change)="onPhotoSelected($event)"
+    />
+
+    <span class="profile-head__meta">
+      <span class="profile-head__name">{{ auth.fullName() }}</span>
+      <span class="profile-head__email">{{ auth.session()?.email }}</span>
+    </span>
+  </div>
+
+  @if (uploading()) {
+    <p class="profile-note">Updating photo…</p>
+  }
+  @if (error()) {
+    <p class="profile-note profile-note--error">{{ error() }}</p>
+  } @else if (notice()) {
+    <p class="profile-note profile-note--ok">{{ notice() }}</p>
+  }
+
+  <div class="profile-field">
+    <label class="profile-field__label" for="profile-phone">Phone number</label>
+    <div class="profile-field__row">
+      <input
+        #phoneInput
+        id="profile-phone"
+        class="input profile-field__input"
+        type="tel"
+        maxlength="25"
+        placeholder="e.g. +256 77 123 4567"
+        [value]="phone()"
+        (input)="onPhoneInput(phoneInput.value)"
+        (keydown.enter)="savePhone()"
+      />
+      <button
+        type="button"
+        class="btn-mini profile-field__save"
+        (click)="savePhone()"
+        [disabled]="saving() || phoneTooLong()"
+      >
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </button>
+    </div>
+    @if (phoneTooLong()) {
+      <p class="profile-note profile-note--error">25 characters max.</p>
+    }
+  </div>
+
+  <button
+    type="button"
+    class="user-menu__item user-menu__item--danger"
+    role="menuitem"
+    (click)="signedOut.emit()"
+  >
+    <i class="fa-solid fa-right-from-bracket"></i>
+    <span>Sign out</span>
+  </button>
+</div>

@@ -11,6 +11,7 @@ import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ROLE_LABELS } from '../../core/models';
 import { Brand } from '../../shared/brand/brand';
+import { ProfileMenu } from '../../shared/profile-menu/profile-menu';
 
 interface NavItem {
   label: string;
@@ -36,7 +37,7 @@ interface PageMeta {
  */
 @Component({
   selector: 'app-owner-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand, ProfileMenu],
   templateUrl: './owner-layout.html',
 })
 export class OwnerLayout {
@@ -119,9 +120,15 @@ export class OwnerLayout {
 
   closeDrawer(): void {
     this.drawerOpen.set(false);
+    this.userMenuOpen.set(false);
   }
 
   toggleUserMenu(): void {
+    // The profile dropdown lives in the sidebar; on phones/tablets the
+    // topbar avatar has to reveal the drawer first so the panel shows.
+    if (!this.isWide()) {
+      this.drawerOpen.set(true);
+    }
     this.userMenuOpen.update((open) => !open);
   }
 

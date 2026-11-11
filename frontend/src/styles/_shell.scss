@@ -249,6 +249,179 @@
   }
 }
 
+/* ---------- Inline profile panel (Phase 2E dropdown) ---------- */
+.user-menu--profile {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.profile-photo-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  &__frame {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    background: $green-100;
+    color: $green-700;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Camera hint that the photo is clickable. */
+  &__badge {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    display: grid;
+    place-items: center;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: $green-600;
+    color: #fff;
+    font-size: 9px;
+    border: 2px solid $card;
+    pointer-events: none;
+  }
+
+  /* Remove ✕ — sits on top of the pick-photo button (outside it in the
+     DOM; nested buttons are invalid HTML). */
+  &__remove {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    display: grid;
+    place-items: center;
+    width: 21px;
+    height: 21px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: $red-600;
+    color: #fff;
+    font-size: 10px;
+    cursor: pointer;
+    z-index: 1;
+
+    &:hover {
+      filter: brightness(0.92);
+    }
+  }
+
+  &__input {
+    display: none;
+  }
+}
+
+.profile-head__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-head__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: $ink;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-head__email {
+  font-size: 11.5px;
+  color: $muted;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-note {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: $muted;
+
+  &--error {
+    color: $red-600;
+  }
+
+  &--ok {
+    color: $green-700;
+  }
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $ink-2;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  &__save {
+    flex: 0 0 auto;
+  }
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -299,6 +472,11 @@
       right: auto;
       width: 190px;
       bottom: 10px;
+    }
+
+    /* The profile panel needs room for photo + phone row. */
+    .user-menu--profile {
+      width: 254px;
     }
   }
 }

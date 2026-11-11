@@ -83,6 +83,8 @@ interface ApiUser {
   employmentStatus: 'active' | 'inactive';
   hireDate: string | null;
   createdAt: string;
+  /** Phase 2E: this person has a profile photo (GET /users/:id/avatar). */
+  hasAvatar?: boolean;
 }
 
 interface RecordResponse<T> {
@@ -261,6 +263,7 @@ function toWorkerRec(row: ApiUser): WorkerRec | null {
     email: row.email,
     dept: row.department,
     joined: String(row.createdAt).slice(0, 10), // 'YYYY-MM-DD'
+    hasAvatar: row.hasAvatar === true,
   };
 }
 
@@ -330,6 +333,14 @@ export class FarmApiService {
   });
 
   /* ---------------- read-only views ---------------- */
+
+  /**
+   * Phase 2E: image URL for a team member's profile photo — null when
+   * they have none (the list renders the initials fallback instead).
+   */
+  avatarSrc(member: { id: string; hasAvatar?: boolean }): string | null {
+    return member.hasAvatar ? `${API_BASE}/users/${member.id}/avatar` : null;
+  }
 
   readonly tasks = this._tasks.asReadonly();
   readonly attendance = this._attendance.asReadonly();

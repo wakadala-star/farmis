@@ -6,6 +6,11 @@ import { API_BASE } from './api';
 
 const SESSION_KEY = 'farmis.session';
 
+/** Phase 2E profile photo rules (enforced server-side too): 1 MB max,
+ *  JPG/PNG/WebP only — the server additionally sniffs magic bytes. */
+const MAX_AVATAR_BYTES = 1_048_576;
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export interface SignUpModel {
   fullName: string;
   email: string;
@@ -47,6 +52,21 @@ export class AuthService {
   );
   readonly initials = computed(() => initialsOf(this._session()?.fullName ?? ''));
 
+  /* ---- profile dropdown (Phase 2E) ---- */
+
+  /** Own phone number ('' when unset) — edited in the profile menu. */
+  readonly phone = computed(() => this._session()?.phone ?? '');
+
+  /** Bumped after each photo upload/removal to bust the avatar cache. */
+  private readonly _avatarVersion = signal(0);
+
+  /** Profile photo URL for the shell avatars (null → render initials). */
+  readonly avatarSrc = computed(() =>
+    this._session()?.hasAvatar
+      ? `${API_BASE}/auth/avatar?v=${this._avatarVersion()}`
+      : null,
+  );
+
   constructor() {
     void this.restoreSession();
   }
@@ -73,6 +93,57 @@ export class AuthService {
     const result = await this.post('/auth/signin', { email, password });
     if (result.ok && result.session) {
       this.setSession(result.session);
+    }
+    return result;
+  }
+
+  /**
+   * Update own phone number (PATCH /api/auth/me) — the profile dropdown's
+   * only text field; names/emails/passwords stay owned by signup.
+   */
+  async updatePhone(phone: string): Promise<AuthResult> {
+    const result = await this.patch('/auth/me', { phone });
+    if (result.ok && result.session) {
+      this.setSession(result.session);
+    }
+    return result;
+  }
+
+  /**
+   * Replace the profile photo (POST /api/auth/avatar — raw bytes).
+   * Client pre-checks the 1 MB / format rules for a friendly message;
+   * the server re-validates size and sniffs the signature.
+   */
+  async uploadAvatar(file: File): Promise<AuthResult> {
+    if (!AVATAR_TYPES.includes(file.type)) {
+      return { ok: false, message: 'Only JPG, PNG or WebP images are accepted.' };
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      const mb = (file.size / MAX_AVATAR_BYTES).toFixed(1);
+      return { ok: false, message: `Photos must be 1 MB or smaller (this one is ${mb} MB).` };
+    }
+    try {
+      const res = await firstValueFrom(
+        this.http.post<ApiResponse>(`${API_BASE}/auth/avatar`, file, {
+          headers: { 'content-type': file.type },
+        }),
+      );
+      if (res.ok !== false && res.session) {
+        this.setSession(res.session);
+        this._avatarVersion.update((v) => v + 1);
+      }
+      return { ok: res.ok !== false, message: res.message, session: res.session };
+    } catch (err) {
+      return { ok: false, message: messageOf(err) };
+    }
+  }
+
+  /** Remove the profile photo (DELETE /api/auth/avatar) → initials again. */
+  async removeAvatar(): Promise<AuthResult> {
+    const result = await this.del('/auth/avatar');
+    if (result.ok && result.session) {
+      this.setSession(result.session);
+      this._avatarVersion.update((v) => v + 1);
     }
     return result;
   }
@@ -107,6 +178,28 @@ export class AuthService {
     try {
       const res = await firstValueFrom(
         this.http.post<ApiResponse>(`${API_BASE}${path}`, body),
+      );
+      return { ok: res.ok !== false, message: res.message, session: res.session };
+    } catch (err) {
+      return { ok: false, message: messageOf(err) };
+    }
+  }
+
+  private async patch(path: string, body: unknown): Promise<AuthResult> {
+    try {
+      const res = await firstValueFrom(
+        this.http.patch<ApiResponse>(`${API_BASE}${path}`, body),
+      );
+      return { ok: res.ok !== false, message: res.message, session: res.session };
+    } catch (err) {
+      return { ok: false, message: messageOf(err) };
+    }
+  }
+
+  private async del(path: string): Promise<AuthResult> {
+    try {
+      const res = await firstValueFrom(
+        this.http.delete<ApiResponse>(`${API_BASE}${path}`),
       );
       return { ok: res.ok !== false, message: res.message, session: res.session };
     } catch (err) {

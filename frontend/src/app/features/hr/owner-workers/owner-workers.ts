@@ -35,6 +35,20 @@ export class OwnerWorkers {
   /** Member id whose removal is in flight (disables that button). */
   readonly removingId = signal('');
 
+  /** Rows whose photo failed to load → render initials instead. */
+  private readonly failedAvatars = signal<ReadonlySet<string>>(new Set());
+
+  /** Phase 2E: team photo URL (null → initials fallback). */
+  avatarSrc(member: StaffRec): string | null {
+    return this.failedAvatars().has(member.id)
+      ? null
+      : this.api.avatarSrc(member);
+  }
+
+  markAvatarFailed(id: string): void {
+    this.failedAvatars.update((set) => new Set(set).add(id));
+  }
+
   readonly form = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,

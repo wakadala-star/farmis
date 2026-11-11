@@ -20,6 +20,10 @@ export interface Session {
   email: string;
   role: Role;
   department?: Department;
+  /** Profile dropdown (Phase 2E): own phone number, '' → null server-side. */
+  phone?: string | null;
+  /** True when a profile photo exists (served from /api/auth/avatar). */
+  hasAvatar?: boolean;
 }
 
 export interface AuthResult {

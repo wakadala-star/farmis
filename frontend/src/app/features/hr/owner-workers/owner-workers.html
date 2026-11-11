@@ -175,7 +175,17 @@
           </p>
           @for (member of staff(); track member.id) {
             <div class="list-row">
-              <span class="list-row__avatar">{{ member.fullName.charAt(0) }}</span>
+              <span class="list-row__avatar">
+                @if (avatarSrc(member); as src) {
+                  <img
+                    [src]="src"
+                    alt=""
+                    (error)="markAvatarFailed(member.id)"
+                  />
+                } @else {
+                  {{ member.fullName.charAt(0) }}
+                }
+              </span>
               <div class="list-row__main">
                 <p class="list-row__title-row">
                   <strong class="list-row__title">{{ member.fullName }}</strong>

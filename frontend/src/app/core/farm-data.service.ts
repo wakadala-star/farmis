@@ -35,6 +35,8 @@ export interface WorkerRec {
   email: string;
   dept: Department;
   joined: string; // YYYY-MM-DD
+  /** Phase 2E: has a profile photo (team-list avatar). */
+  hasAvatar?: boolean;
 }
 
 export interface AttendanceRec {

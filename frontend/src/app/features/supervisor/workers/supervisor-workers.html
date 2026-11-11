@@ -138,7 +138,17 @@
         } @else {
           @for (worker of workers(); track worker.id) {
             <div class="list-row">
-              <span class="list-row__avatar">{{ worker.name.charAt(0) }}</span>
+              <span class="list-row__avatar">
+                @if (avatarSrc(worker); as src) {
+                  <img
+                    [src]="src"
+                    alt=""
+                    (error)="markAvatarFailed(worker.id)"
+                  />
+                } @else {
+                  {{ worker.name.charAt(0) }}
+                }
+              </span>
               <div class="list-row__main">
                 <p class="list-row__title-row">
                   <strong class="list-row__title">{{ worker.name }}</strong>
