@@ -41,14 +41,28 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/auth/signout`| —               | Clears the cookie                          |
 | GET    | `/api/auth/me`     | required        | Current session (fresh from DB)            |
 | GET    | `/api/users`       | owner/supervisor| Owner: all users · Supervisor: own department · Worker: 403 |
+| POST   | `/api/users`       | owner/supervisor| Recruit — supervisor: creates an active **worker** in their own department and chooses the initial password · owner: worker/supervisor + department |
+| DELETE | `/api/users/:id`   | owner/supervisor| Remove from the team by deactivating the account (`inactive` blocks signin, history kept) — supervisor: own-dept workers only, owner: anyone but owners |
 | GET    | `/api/tasks/mine`  | required        | Tasks assigned to the signed-in user (cancelled hidden, mapped to open/in-progress/done) |
+| GET    | `/api/tasks/department` | supervisor | Every live task of the supervisor's department |
+| POST   | `/api/tasks`       | supervisor      | Assign work to an active team worker (assignee by email, required due date) |
+| PATCH  | `/api/tasks/:id/status` | supervisor | Cycle status `open → in-progress → done` (own department; cancelled tasks locked) |
 | GET    | `/api/attendance/mine` | required    | Own clock records, newest first (`running` while open, then approval state) |
 | POST   | `/api/attendance/clock-in` | worker   | Open today's shift — one shift per day, idempotent while running |
 | POST   | `/api/attendance/clock-out` | worker   | Close the open shift → awaits supervisor approval |
+| GET    | `/api/attendance/department` | supervisor | Team clock records, newest first (approval feed + dashboard tiles) |
+| POST   | `/api/attendance/:id/decision` | supervisor | Approve/reject a clock-out awaiting approval (pending only, own department) |
 | GET    | `/api/entries`     | required        | Department feed, newest first (owner: every department) |
 | POST   | `/api/entries`     | worker          | Record a field/livestock activity (department from session) |
+| GET    | `/api/transactions/mine` | required  | Own credit requests, newest first |
+| POST   | `/api/transactions`| worker          | Request credit for a farm purchase (amount > 0, reason ≤ 200 chars) |
+| GET    | `/api/transactions/department` | supervisor | Department credit requests, newest first (pending + decided) |
+| POST   | `/api/transactions/:id/decision` | supervisor | Approve/reject a pending request (own department, pending only) |
 | GET    | `/api/reports/mine`| required        | Own daily reports, newest first            |
 | POST   | `/api/reports`     | worker          | File a daily report (free-text task, 1–24 h) |
+| GET    | `/api/reports/department` | supervisor | Daily reports filed by the team, newest first |
+| GET    | `/api/reports/operations` | supervisor | Generated operations-report history (8 label/value lines) |
+| POST   | `/api/reports/operations` | supervisor | Compute + store the report over department data from `periodStart` |
 
 All responses are JSON: `{ ok: boolean, message: string, ... }`.
 

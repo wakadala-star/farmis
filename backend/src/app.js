@@ -8,6 +8,7 @@ const tasksRoutes = require('./routes/tasks.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const entriesRoutes = require('./routes/entries.routes');
 const reportsRoutes = require('./routes/reports.routes');
+const transactionsRoutes = require('./routes/transactions.routes');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/entries', entriesRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/transactions', transactionsRoutes);
 
 // Unknown routes → JSON 404 (not an HTML page).
 app.use((req, res) => {

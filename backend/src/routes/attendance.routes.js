@@ -151,4 +151,74 @@ router.post('/clock-out', requireAuth, requireRole('worker'), async (req, res, n
   }
 });
 
+/**
+ * GET /api/attendance/department — every clock record of the
+ * supervisor's team, newest first (for the approval feed + tiles).
+ */
+router.get('/department', requireAuth, requireRole('supervisor'), async (req, res, next) => {
+  try {
+    if (!req.user.departmentId) return res.json({ ok: true, attendance: [] });
+    const { rows } = await query(
+      `${SELECT_RECORD}
+        WHERE u.department_id = $1
+        ORDER BY a.attendance_date DESC, a.check_in DESC NULLS LAST
+        LIMIT 100`,
+      [req.user.departmentId],
+    );
+    res.json({ ok: true, attendance: rows.map(toRecord) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/attendance/:id/decision — approve or reject a clock-out
+ * that is still awaiting approval (supervisor, own department only).
+ * Body: { decision: 'approved' | 'rejected' }.
+ */
+router.post('/:id/decision', requireAuth, requireRole('supervisor'), async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    if (!/^\d+$/.test(id)) return res.status(400).json({ ok: false, message: 'Invalid attendance id.' });
+
+    const decision = String(req.body?.decision ?? '');
+    if (decision !== 'approved' && decision !== 'rejected') {
+      return res.status(400).json({ ok: false, message: 'Decision must be approved or rejected.' });
+    }
+
+    const { rows } = await query(
+      `${SELECT_RECORD}
+        WHERE a.attendance_id = $1::bigint AND u.department_id = $2`,
+      [id, req.user.departmentId],
+    );
+    const rec = rows[0];
+    if (!rec) {
+      return res.status(404).json({ ok: false, message: 'Attendance record not found in your department.' });
+    }
+    if (!rec.check_out) {
+      return res.status(409).json({ ok: false, message: 'This shift is still running — wait for the clock-out.' });
+    }
+    if (rec.approval_status !== 'pending') {
+      return res.status(409).json({ ok: false, message: 'This record has already been decided.' });
+    }
+
+    await query(
+      `UPDATE attendance
+          SET approval_status = $1, approved_by = $2, approved_at = now()
+        WHERE attendance_id = $3::bigint
+          AND approval_status = 'pending'
+          AND check_out IS NOT NULL`,
+      [decision, req.user.id, id],
+    );
+
+    return res.json({
+      ok: true,
+      message: decision === 'approved' ? 'Time record approved.' : 'Time record rejected.',
+      record: toRecord({ ...rec, approval_status: decision }),
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = router;

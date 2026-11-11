@@ -210,4 +210,4 @@ function me(req, res) {
   res.json({ ok: true, session: req.user });
 }
 
-module.exports = { signup, signin, signout, me };
+module.exports = { signup, signin, signout, me, uniqueUsername };
