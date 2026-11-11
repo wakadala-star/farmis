@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { env } = require('../config/env');
 const { query } = require('../db/pool');
 const { departmentName } = require('../db/departments');
-const { setAuthCookie, clearAuthCookie } = require('../middleware/auth');
+const { setAuthCookie, clearAuthCookie, loadUser, toSession } = require('../middleware/auth');
 const { logAuthAttempt } = require('../db/audit');
 
 const BCRYPT_ROUNDS = 10;
@@ -147,6 +147,7 @@ async function signin(req, res, next) {
 
     const { rows } = await query(
       `SELECT u.user_id, u.first_name, u.last_name, u.email, u.password_hash,
+              u.phone, u.avatar IS NOT NULL AS has_avatar,
               u.employment_status, r.role_name, d.department_name
          FROM users u
          JOIN roles r      ON r.role_id = u.role_id
@@ -191,6 +192,8 @@ async function signin(req, res, next) {
           : user.department_name === 'Animal Rearing' ? 'livestock'
           : null)
         : null,
+      phone: user.phone ?? null,
+      hasAvatar: user.has_avatar === true,
     };
 
     return res.json({ ok: true, message: `Welcome back, ${session.fullName}.`, session });
@@ -210,4 +213,139 @@ function me(req, res) {
   res.json({ ok: true, session: req.user });
 }
 
-module.exports = { signup, signin, signout, me, uniqueUsername };
+/** JPEG / PNG / WebP magic bytes — everything else (incl. SVG) is refused. */
+function sniffImageMime(buf) {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (buf.length >= 8 && png.every((b, i) => buf[i] === b)) return 'image/png';
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+    return 'image/webp';
+  }
+  return null;
+}
+
+/**
+ * Reply with a user's stored profile photo, or 404 when they have none.
+ * Cacheable for a few minutes; the client busts its own cache with a
+ * version query after an upload/removal.
+ */
+async function respondAvatar(res, userId) {
+  const { rows } = await query(
+    'SELECT avatar, avatar_mime FROM users WHERE user_id = $1',
+    [userId],
+  );
+  const row = rows[0];
+  if (!row || !row.avatar) {
+    return res.status(404).json({ ok: false, message: 'No profile photo.' });
+  }
+  res.set('Content-Type', row.avatar_mime || 'application/octet-stream');
+  res.set('Cache-Control', 'private, max-age=300');
+  return res.send(Buffer.from(row.avatar));
+}
+
+/** GET /api/auth/avatar — the signed-in user's profile photo. */
+async function getAvatar(req, res, next) {
+  try {
+    return await respondAvatar(res, req.user.id);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/auth/me — update your own phone number (the profile
+ * dropdown's only text field; names and passwords stay owned by
+ * signup/signin — no password-change flow exists on purpose).
+ * Body: { phone } — '' clears it.
+ */
+async function updateProfile(req, res, next) {
+  try {
+    const body = req.body ?? {};
+    if (body.phone === undefined) {
+      return res.status(400).json({ ok: false, message: 'Nothing to update.' });
+    }
+    const phone = body.phone == null ? '' : String(body.phone).trim();
+    if (phone.length > 25) {
+      return res.status(400).json({ ok: false, message: 'Phone number must be at most 25 characters.' });
+    }
+
+    await query(
+      'UPDATE users SET phone = $1 WHERE user_id = $2',
+      [phone === '' ? null : phone, req.user.id],
+    );
+    logAuthAttempt('profile_update', 'success', {
+      email: req.user.email, userId: req.user.id, reason: 'phone', ip: req.ip,
+    });
+
+    const session = toSession(await loadUser(req.user.id));
+    return res.json({
+      ok: true,
+      message: phone === '' ? 'Phone number cleared.' : 'Phone number saved.',
+      session,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/avatar — replace your profile photo. The body is the
+ * raw image bytes; the route's express.raw parser caps it at 1 MB and
+ * the signature is sniffed so a renamed file can't slip through.
+ */
+async function uploadAvatar(req, res, next) {
+  try {
+    const buf = Buffer.isBuffer(req.body) ? req.body : null;
+    if (!buf || buf.length === 0) {
+      return res.status(400).json({ ok: false, message: 'Choose a JPG, PNG or WebP image up to 1 MB.' });
+    }
+    const mime = sniffImageMime(buf);
+    if (!mime) {
+      return res.status(400).json({ ok: false, message: 'Only JPG, PNG or WebP images are accepted.' });
+    }
+
+    await query(
+      'UPDATE users SET avatar = $1, avatar_mime = $2 WHERE user_id = $3',
+      [buf, mime, req.user.id],
+    );
+    logAuthAttempt('profile_update', 'success', {
+      email: req.user.email, userId: req.user.id, reason: 'avatar', ip: req.ip,
+    });
+
+    const session = toSession(await loadUser(req.user.id));
+    return res.json({ ok: true, message: 'Profile photo updated.', session });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** DELETE /api/auth/avatar — remove the photo (avatar reverts to initials). */
+async function deleteAvatar(req, res, next) {
+  try {
+    await query(
+      'UPDATE users SET avatar = NULL, avatar_mime = NULL WHERE user_id = $1',
+      [req.user.id],
+    );
+    logAuthAttempt('profile_update', 'success', {
+      email: req.user.email, userId: req.user.id, reason: 'avatar_removed', ip: req.ip,
+    });
+
+    const session = toSession(await loadUser(req.user.id));
+    return res.json({ ok: true, message: 'Profile photo removed.', session });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  signup,
+  signin,
+  signout,
+  me,
+  uniqueUsername,
+  respondAvatar,
+  getAvatar,
+  updateProfile,
+  uploadAvatar,
+  deleteAvatar,
+};

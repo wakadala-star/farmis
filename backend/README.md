@@ -40,7 +40,12 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/auth/signin` | —               | Verify credentials → sets httpOnly cookie  |
 | POST   | `/api/auth/signout`| —               | Clears the cookie                          |
 | GET    | `/api/auth/me`     | required        | Current session (fresh from DB)            |
+| PATCH  | `/api/auth/me`     | required        | Update own phone number (`''` clears; names/passwords stay owned by signup — no password-change flow) |
+| POST   | `/api/auth/avatar` | required        | Replace profile photo — raw JPG/PNG/WebP bytes, **max 1 MB** (route-level `express.raw` + magic-byte sniff) |
+| GET    | `/api/auth/avatar` | required        | Own profile photo (404 when none; `private, max-age=300`) |
+| DELETE | `/api/auth/avatar` | required        | Remove profile photo → avatar reverts to initials |
 | GET    | `/api/users`       | owner/supervisor| Owner: all users · Supervisor: own department · Worker: 403 |
+| GET    | `/api/users/:id/avatar` | required  | Team member's profile photo (team lists; 404 when none) |
 | POST   | `/api/users`       | owner/supervisor| Recruit — supervisor: creates an active **worker** in their own department and chooses the initial password · owner: worker/supervisor + department |
 | DELETE | `/api/users/:id`   | owner/supervisor| Remove from the team by deactivating the account (`inactive` blocks signin, history kept) — supervisor: own-dept workers only, owner: anyone but owners |
 | GET    | `/api/tasks/mine`  | required        | Tasks assigned to the signed-in user (cancelled hidden, mapped to open/in-progress/done) |

@@ -17,7 +17,8 @@ function readToken(req) {
 /** Load the live user row for a payload (so role/status changes apply immediately). */
 async function loadUser(userId) {
   const { rows } = await query(
-    `SELECT u.user_id, u.first_name, u.last_name, u.email,
+    `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone,
+            u.avatar IS NOT NULL AS has_avatar,
             u.department_id,
             u.employment_status, r.role_name, d.department_name
        FROM users u
@@ -38,6 +39,8 @@ function toSession(row) {
     role: row.role_name,                        // 'owner' | 'supervisor' | 'worker'
     department: departmentCode(row.department_name), // 'crops' | 'livestock' | null
     departmentId: row.department_id ?? null,    // server-side scoping (not used by the UI)
+    phone: row.phone ?? null,                   // profile dropdown (Phase 2E)
+    hasAvatar: row.has_avatar === true,         // photo blob lives server-side
   };
 }
 
@@ -115,4 +118,6 @@ module.exports = {
   requireRole,
   setAuthCookie,
   clearAuthCookie,
+  loadUser,
+  toSession,
 };

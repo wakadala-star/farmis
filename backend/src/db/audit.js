@@ -5,7 +5,7 @@ const { query } = require('./pool');
  * break or delay an auth response, so failures are swallowed (and noted
  * on stderr). Passwords are never passed in.
  *
- * @param {'signup'|'signin'} action
+ * @param {'signup'|'signin'|'profile_update'} action
  * @param {'success'|'failure'} outcome
  * @param {{ email?: string|null, userId?: string|number|null,
  *           reason?: string|null, ip?: string|null }} [details]

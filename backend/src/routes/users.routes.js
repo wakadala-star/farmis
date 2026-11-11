@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { query } = require('../db/pool');
 const { departmentCode, departmentName } = require('../db/departments');
-const { uniqueUsername } = require('../controllers/auth.controller');
+const { uniqueUsername, respondAvatar } = require('../controllers/auth.controller');
 
 const router = Router();
 
@@ -23,6 +23,7 @@ router.get('/', requireAuth, requireRole('owner', 'supervisor'), async (req, res
     const { role, department, id } = req.user;
 
     let sql = `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone,
+                      u.avatar IS NOT NULL AS has_avatar,
                       u.employment_status, u.hire_date, u.created_at,
                       r.role_name, d.department_name
                  FROM users u
@@ -54,8 +55,24 @@ router.get('/', requireAuth, requireRole('owner', 'supervisor'), async (req, res
         employmentStatus: row.employment_status,
         hireDate: row.hire_date,
         createdAt: row.created_at,
+        hasAvatar: row.has_avatar === true,
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/users/:id/avatar — another team member's profile photo
+ * (owner Workers & HR / supervisor team lists). Any signed-in role may
+ * view; 404 when that person has no photo (lists gate on hasAvatar).
+ */
+router.get('/:id/avatar', requireAuth, async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    if (!/^\d+$/.test(id)) return res.status(400).json({ ok: false, message: 'Invalid user id.' });
+    return await respondAvatar(res, id);
   } catch (err) {
     next(err);
   }
