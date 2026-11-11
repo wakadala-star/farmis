@@ -34,22 +34,24 @@
             <label class="field__label" for="dr-task">Task</label>
             <div class="field__box">
               <i class="fa-solid fa-list-check field__icon"></i>
-              <select
+              <input
                 id="dr-task"
-                class="select"
+                class="input"
+                list="dr-task-suggestions"
                 [class.is-invalid]="invalid('task')"
+                placeholder="Which task did you work on?"
                 formControlName="task"
-              >
-                <option value="" disabled>Which task did you work on?</option>
-                @for (task of tasks; track task.id) {
-                  <option [value]="task.title">{{ task.title }}</option>
-                }
-              </select>
+              />
             </div>
+            <datalist id="dr-task-suggestions">
+              @for (task of tasks(); track task.id) {
+                <option [value]="task.title"></option>
+              }
+            </datalist>
             @if (invalid('task')) {
               <span class="field__error">
                 <i class="fa-solid fa-circle-exclamation"></i>
-                Choose the task this report is about.
+                Name the task this report is about.
               </span>
             }
           </div>
@@ -113,9 +115,18 @@
             }
           </div>
 
-          <button class="btn btn--primary" type="submit">
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
             <span>Submit Report</span>
-            <i class="fa-solid fa-paper-plane"></i>
+            @if (submitting()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-paper-plane"></i>
+            }
           </button>
         </form>
       </div>
@@ -132,26 +143,41 @@
       </header>
 
       <div class="widget__body">
-        @for (report of filed(); track report.id) {
-          <div class="list-row list-row--stacked">
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ report.task }}</strong>
-                <span class="chip chip--blue">{{ report.hours }}h</span>
-                <span class="chip chip--neutral">{{
-                  fmtDay(report.date)
-                }}</span>
-              </p>
-              <p class="list-row__sub list-row__sub--wrap">
-                {{ report.summary }}
-              </p>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-regular fa-clipboard"></i>
-            You haven’t filed a report yet — submit the first one.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading your reports…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (report of filed(); track report.id) {
+            <div class="list-row list-row--stacked">
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ report.task }}</strong>
+                  <span class="chip chip--blue">{{ report.hours }}h</span>
+                  <span class="chip chip--neutral">{{
+                    fmtDay(report.date)
+                  }}</span>
+                </p>
+                <p class="list-row__sub list-row__sub--wrap">
+                  {{ report.summary }}
+                </p>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-regular fa-clipboard"></i>
+              You haven’t filed a report yet — submit the first one.
+            </p>
+          }
         }
       </div>
     </article>

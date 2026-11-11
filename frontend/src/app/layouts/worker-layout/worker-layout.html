@@ -108,7 +108,7 @@
 
         <div class="date-pill" title="Today">
           <i class="fa-regular fa-calendar"></i>
-          <span>Mon, Nov 9, 2026</span>
+          <span>{{ todayLabel }}</span>
           <i class="fa-solid fa-chevron-down"></i>
         </div>
 
@@ -142,7 +142,10 @@
               </p>
               <p class="clock-pop__timer" aria-live="off">{{ elapsedLabel() }}</p>
               <p class="clock-pop__hint">
-                @if (isClockedIn()) {
+                @if (clockError()) {
+                  <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                  {{ clockError() }}
+                } @else if (isClockedIn()) {
                   Shift started at {{ clockedInAt() }}
                 } @else {
                   Tap below to start your shift
@@ -152,10 +155,26 @@
                 type="button"
                 class="clock-pop__btn"
                 [class.is-out]="isClockedIn()"
+                [disabled]="clockBusy()"
+                [attr.aria-busy]="clockBusy()"
                 (click)="toggleClock()"
               >
-                <i [class]="isClockedIn() ? 'fa-solid fa-stop' : 'fa-solid fa-play'"></i>
-                {{ isClockedIn() ? 'Clock Out' : 'Clock In' }}
+                @if (clockBusy()) {
+                  <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                } @else {
+                  <i
+                    [class]="
+                      isClockedIn() ? 'fa-solid fa-stop' : 'fa-solid fa-play'
+                    "
+                  ></i>
+                }
+                {{
+                  clockBusy()
+                    ? 'Please wait…'
+                    : isClockedIn()
+                      ? 'Clock Out'
+                      : 'Clock In'
+                }}
               </button>
               <a
                 class="clock-pop__link"

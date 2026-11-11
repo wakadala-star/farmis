@@ -6,10 +6,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { AuthService } from '../../../core/auth.service';
-import {
-  FarmDataService,
-  fmtDay,
-} from '../../../core/farm-data.service';
+import { FarmApiService } from '../../../core/farm-api.service';
+import { fmtDay } from '../../../core/farm-data.service';
 import { Department } from '../../../core/models';
 
 interface EntryField {
@@ -23,7 +21,8 @@ interface EntryField {
  * Worker data entry — record the specifics of today's work in the
  * system. Field labels and options adapt to the worker's department
  * (crop activities & plots vs. livestock activities & units). Entries
- * land in the department feed the owner and supervisor can see.
+ * land in the department feed the owner and supervisor can see
+ * (POST /api/entries — the department is taken from the session).
  */
 @Component({
   selector: 'app-worker-data-entry',
@@ -32,16 +31,21 @@ interface EntryField {
 })
 export class WorkerDataEntry {
   private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
+  private readonly api = inject(FarmApiService);
 
   readonly dept = (this.auth.department() ?? 'crops') as Department;
-  readonly worker = this.auth.fullName();
   readonly isCrops = this.dept === 'crops';
 
   readonly fmtDay = fmtDay;
 
   readonly notice = signal('');
   readonly error = signal('');
+  readonly submitting = signal(false);
+
+  /** Department entries — the newest ones (including yours) on top. */
+  readonly recent = computed(() => this.api.entries().slice(0, 8));
+  readonly loading = this.api.entriesLoading;
+  readonly loadError = this.api.entriesError;
 
   /** Activity options differ per department. */
   readonly activityField: EntryField = this.isCrops
@@ -106,8 +110,13 @@ export class WorkerDataEntry {
     notes: new FormControl('', { nonNullable: true }),
   });
 
-  /** Department entries — the newest ones (including yours) on top. */
-  readonly recent = computed(() => this.data.entriesOf(this.dept).slice(0, 8));
+  constructor() {
+    void this.api.ensure('entries');
+  }
+
+  retry(): void {
+    void this.api.ensure('entries');
+  }
 
   invalid(
     control: 'activity' | 'place' | 'subject' | 'measure',
@@ -116,25 +125,35 @@ export class WorkerDataEntry {
     return field.invalid && (field.touched || field.dirty);
   }
 
-  submit(): void {
+  async submit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set('Fill in the activity, location, subject and measure.');
       return;
     }
+    if (this.submitting()) return;
 
-    const { activity, place, subject, measure, notes } = this.form.getRawValue();
-    this.data.addEntry({
-      worker: this.worker,
-      dept: this.dept,
-      activity,
-      place,
-      subject,
-      measure,
-      notes: notes.trim(),
-    });
-    this.form.reset({ activity: '', place: '', subject: '', measure: '', notes: '' });
-    this.error.set('');
-    this.notice.set(`${activity} entry recorded — thank you.`);
+    this.submitting.set(true);
+    try {
+      const { activity, place, subject, measure, notes } = this.form.getRawValue();
+      const res = await this.api.addEntry({
+        activity,
+        place,
+        subject,
+        measure,
+        notes: notes.trim(),
+      });
+
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+
+      this.form.reset({ activity: '', place: '', subject: '', measure: '', notes: '' });
+      this.error.set('');
+      this.notice.set(`${activity} entry recorded — thank you.`);
+    } finally {
+      this.submitting.set(false);
+    }
   }
 }

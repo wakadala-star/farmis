@@ -1,7 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
-import { AuthService } from '../../../core/auth.service';
+import { FarmApiService } from '../../../core/farm-api.service';
 import {
-  FarmDataService,
   fmtClock,
   fmtDay,
   fmtDuration,
@@ -9,24 +8,19 @@ import {
   statusTone,
   workedSeconds,
 } from '../../../core/farm-data.service';
-import { Department } from '../../../core/models';
 import { MetaTile } from '../../../shared/management-view/management-view';
 
 /**
  * Worker attendance — the clock records produced by the topbar clock
- * button. Clocked-out time sits as "pending" here until the
- * supervisor confirms it.
+ * button (loaded from GET /api/attendance/mine). Clocked-out time sits
+ * as "pending" here until the supervisor confirms it.
  */
 @Component({
   selector: 'app-worker-attendance',
   templateUrl: './worker-attendance.html',
 })
 export class WorkerAttendance {
-  private readonly auth = inject(AuthService);
-  private readonly data = inject(FarmDataService);
-
-  readonly dept = (this.auth.department() ?? 'crops') as Department;
-  readonly worker = this.auth.fullName();
+  private readonly api = inject(FarmApiService);
 
   readonly fmtClock = fmtClock;
   readonly fmtDay = fmtDay;
@@ -35,10 +29,12 @@ export class WorkerAttendance {
   readonly statusLabel = statusLabel;
   readonly workedSeconds = workedSeconds;
 
-  readonly records = computed(() => this.data.myAttendance(this.worker));
+  readonly records = this.api.attendance;
+  readonly loading = this.api.attendanceLoading;
+  readonly error = this.api.attendanceError;
 
   readonly tiles = computed<MetaTile[]>(() => {
-    const running = this.data.runningRecord(this.worker);
+    const running = this.api.runningRecord();
     const midnight = new Date().setHours(0, 0, 0, 0);
     const today = this.records().filter((rec) => rec.clockIn >= midnight);
     const pending = this.records().filter(
@@ -75,4 +71,12 @@ export class WorkerAttendance {
       },
     ];
   });
+
+  constructor() {
+    void this.api.ensure('attendance');
+  }
+
+  retry(): void {
+    void this.api.ensure('attendance');
+  }
 }

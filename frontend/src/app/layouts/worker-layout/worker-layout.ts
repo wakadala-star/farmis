@@ -16,11 +16,8 @@ import {
 } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
-import {
-  FarmDataService,
-  fmtClock,
-  fmtHMS,
-} from '../../core/farm-data.service';
+import { FarmApiService } from '../../core/farm-api.service';
+import { fmtClock, fmtHMS } from '../../core/farm-data.service';
 import { DEPT_SHORT, Department, ROLE_LABELS } from '../../core/models';
 import { Brand } from '../../shared/brand/brand';
 
@@ -54,7 +51,7 @@ interface PageMeta {
 export class WorkerLayout {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  readonly data = inject(FarmDataService);
+  readonly api = inject(FarmApiService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly drawerOpen = signal(false);
@@ -70,32 +67,39 @@ export class WorkerLayout {
   );
 
   /** Own records still waiting for the supervisor's approval. */
-  readonly pendingCount = computed(
-    () =>
-      this.data
-        .myAttendance(this.auth.fullName())
-        .filter((rec) => rec.status === 'pending').length,
-  );
+  readonly pendingCount = this.api.pendingCount;
+
+  /** Human date for the topbar pill, e.g. 'Tue, Nov 11, 2026'. */
+  readonly todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   /* ---------------- clock in / out ---------------- */
 
   /** Ticks once a second while clocked in — drives the live timer. */
   private readonly tick = signal(0);
 
-  readonly isClockedIn = computed(
-    () => this.data.runningRecord(this.auth.fullName()) !== null,
-  );
+  /** True while a clock-in/out request is in flight. */
+  readonly clockBusy = signal(false);
+
+  /** Last clock failure (shown in the dropdown), cleared on the next try. */
+  readonly clockError = signal('');
+
+  readonly isClockedIn = computed(() => this.api.runningRecord() !== null);
 
   /** Live h:mm:ss worked since clock-in (0:00:00 when clocked out). */
   readonly elapsedLabel = computed(() => {
     this.tick(); // recompute every second while the interval runs
-    const rec = this.data.runningRecord(this.auth.fullName());
+    const rec = this.api.runningRecord();
     if (!rec) return '0:00:00';
     return fmtHMS((Date.now() - rec.clockIn) / 1000);
   });
 
   readonly clockedInAt = computed(() => {
-    const rec = this.data.runningRecord(this.auth.fullName());
+    const rec = this.api.runningRecord();
     return rec ? fmtClock(rec.clockIn) : '';
   });
 
@@ -144,6 +148,10 @@ export class WorkerLayout {
 
   constructor() {
     this.path.set(this.pathOf(this.router.url));
+
+    // Attendance powers the clock state + approval badge across pages.
+    void this.api.ensure('attendance');
+
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -171,12 +179,17 @@ export class WorkerLayout {
   }
 
   /** Starts the shift, or ends it and sends the record for approval. */
-  toggleClock(): void {
-    const worker = this.auth.fullName();
-    if (this.isClockedIn()) {
-      this.data.clockOut(worker);
-    } else {
-      this.data.clockIn(worker, this.dept());
+  async toggleClock(): Promise<void> {
+    if (this.clockBusy()) return;
+    this.clockBusy.set(true);
+    this.clockError.set('');
+    try {
+      const res = this.isClockedIn()
+        ? await this.api.clockOut()
+        : await this.api.clockIn();
+      if (!res.ok) this.clockError.set(res.message);
+    } finally {
+      this.clockBusy.set(false);
     }
   }
 

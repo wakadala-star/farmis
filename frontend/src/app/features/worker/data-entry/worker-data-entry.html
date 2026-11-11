@@ -148,9 +148,18 @@
             </div>
           </div>
 
-          <button class="btn btn--primary" type="submit">
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
             <span>Save Entry</span>
-            <i class="fa-solid fa-check"></i>
+            @if (submitting()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-check"></i>
+            }
           </button>
         </form>
       </div>
@@ -167,30 +176,45 @@
       </header>
 
       <div class="widget__body">
-        @for (entry of recent(); track entry.id) {
-          <div class="list-row">
-            <span class="list-row__avatar">{{ entry.worker.charAt(0) }}</span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ entry.activity }}</strong>
-                <span class="chip chip--green">{{ entry.measure }}</span>
-              </p>
-              <p class="list-row__sub">
-                {{ entry.subject }} · {{ entry.place }} · {{ entry.worker }}
-              </p>
-              @if (entry.notes) {
-                <p class="list-row__meta">{{ entry.notes }}</p>
-              }
-            </div>
-            <div class="list-row__side">
-              <span class="list-row__when">{{ fmtDay(entry.date) }}</span>
-            </div>
-          </div>
-        } @empty {
+        @if (loading()) {
           <p class="empty-state">
-            <i class="fa-solid fa-pen-to-square"></i>
-            No entries yet — save the first one with the form.
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading the department feed…
           </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          @for (entry of recent(); track entry.id) {
+            <div class="list-row">
+              <span class="list-row__avatar">{{ entry.worker.charAt(0) }}</span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ entry.activity }}</strong>
+                  <span class="chip chip--green">{{ entry.measure }}</span>
+                </p>
+                <p class="list-row__sub">
+                  {{ entry.subject }} · {{ entry.place }} · {{ entry.worker }}
+                </p>
+                @if (entry.notes) {
+                  <p class="list-row__meta">{{ entry.notes }}</p>
+                }
+              </div>
+              <div class="list-row__side">
+                <span class="list-row__when">{{ fmtDay(entry.date) }}</span>
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-pen-to-square"></i>
+              No entries yet — save the first one with the form.
+            </p>
+          }
         }
       </div>
     </article>

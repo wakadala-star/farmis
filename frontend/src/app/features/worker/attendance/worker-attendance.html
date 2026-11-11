@@ -35,7 +35,21 @@
     </header>
 
     <div class="widget__body">
-      @for (rec of records(); track rec.id) {
+      @if (loading()) {
+        <p class="empty-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          Loading your clock records…
+        </p>
+      } @else if (error()) {
+        <div class="form-alert form-alert--error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ error() }}</span>
+          <button type="button" class="btn-mini" (click)="retry()">
+            Retry
+          </button>
+        </div>
+      } @else {
+        @for (rec of records(); track rec.id) {
         <div class="list-row">
           <span class="list-row__icon list-row__icon--blue"
             ><i class="fa-regular fa-clock"></i
@@ -58,12 +72,13 @@
             </p>
           </div>
         </div>
-      } @empty {
-        <p class="empty-state">
-          <i class="fa-solid fa-clock"></i>
-          No clock records yet — open the clock button in the top bar and
-          clock in to start your first shift.
-        </p>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-clock"></i>
+            No clock records yet — open the clock button in the top bar and
+            clock in to start your first shift.
+          </p>
+        }
       }
     </div>
   </article>
