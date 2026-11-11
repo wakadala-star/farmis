@@ -11,13 +11,26 @@ const DEPT_CODES = ['crops', 'livestock'];
 
 /**
  * GET /api/owner/summary — everything the owner dashboard renders in
- * one round trip: stat-card numbers, the 6-month sales series, recent
+ * one round trip: stat-card numbers (people, stock, approvals, sales,
+ * livestock head count, crop plots), the 6-month sales series, recent
  * sales, low-stock rows, pending approvals, tasks due soon and a mixed
- * recent-activity feed (entries + expenses + sales).
+ * recent-activity feed (entries + expenses + sales + registry adds).
  */
 router.get('/summary', requireAuth, requireRole('owner'), async (_req, res, next) => {
   try {
-    const [employees, stock, pending, month, series, sales, lowStock, tasks, feed] =
+    const [
+      employees,
+      stock,
+      pending,
+      month,
+      series,
+      sales,
+      lowStock,
+      tasks,
+      feed,
+      livestockStats,
+      cropStats,
+    ] =
       await Promise.all([
         // Employees = active accounts that are not owners.
         query(
@@ -116,9 +129,31 @@ router.get('/summary', requireAuth, requireRole('owner'), async (_req, res, next
                     s.sale_date, NULL, s.total_amount
                FROM sales s
                LEFT JOIN customers c ON c.customer_id = s.customer_id
+             UNION ALL
+             SELECT 'crop', 'Crop added: ' || cr.name,
+                    u.first_name || ' ' || u.last_name,
+                    cr.created_at, NULL, NULL
+               FROM crops cr
+               JOIN users u ON u.user_id = cr.created_by
+             UNION ALL
+             SELECT 'animal', 'Livestock added: ' || lv.quantity || ' ' || lv.species,
+                    u.first_name || ' ' || u.last_name,
+                    lv.created_at, NULL, NULL
+               FROM livestock lv
+               JOIN users u ON u.user_id = lv.created_by
            ) feed
            ORDER BY at DESC
            LIMIT 6`,
+        ),
+        // Registry totals for the dashboard's crop/animal stat cards.
+        query(
+          `SELECT COALESCE(sum(quantity), 0)::int AS head
+             FROM livestock`,
+        ),
+        query(
+          `SELECT count(*)::int AS plots,
+                  COALESCE(sum(area_ha), 0)::numeric AS ha
+             FROM crops`,
         ),
       ]);
 
@@ -133,6 +168,9 @@ router.get('/summary', requireAuth, requireRole('owner'), async (_req, res, next
         pendingApprovals: pending.rows[0].attendance + pending.rows[0].credit,
         monthSales: now,
         prevMonthSales: prev,
+        animals: livestockStats.rows[0].head,
+        cropPlots: cropStats.rows[0].plots,
+        cropHa: Number(cropStats.rows[0].ha),
       },
       series: series.rows.map((r) => ({ month: r.month, value: Number(r.value) })),
       sales: sales.rows.map((r) => ({
