@@ -17,12 +17,14 @@ import {
 import { Department } from './models';
 
 /* ============================================================
-   REAL FARM DATA against the FARMIS backend (Phase 2B + 2C).
+   REAL FARM DATA against the FARMIS backend (Phase 2B + 2C + 2D).
 
    Phase 2B moved the worker screens here; Phase 2C adds the
    supervisor loop (department tasks, attendance approvals,
    credit decisions, recruit/offboard, operations reports) and
-   the worker's own credit requests.
+   the worker's own credit requests. Phase 2D adds the owner
+   loop: dashboard summary, management pages, crop/livestock
+   registries, quick actions (expense, sale) and the staff list.
 
    The record shapes match FarmDataService's types exactly, so
    the page templates keep rendering the same way.
@@ -44,7 +46,13 @@ type Collection =
   | 'transactions'
   | 'myTransactions'
   | 'deptReports'
-  | 'opsReports';
+  | 'opsReports'
+  | 'ownerSummary'
+  | 'deptCrops'
+  | 'deptLivestock'
+  | 'crops'
+  | 'livestock'
+  | 'staff';
 
 interface LoadState {
   loading: boolean;
@@ -82,6 +90,139 @@ interface RecordResponse<T> {
   message: string;
   record?: T;
 }
+
+/* --- owner loop payloads (Phase 2D) --- */
+
+/** A low-stock row as the dashboard and management pages show it. */
+export interface LowStockRow {
+  name: string;
+  qty: number;
+  unit: string;
+  reorderLevel: number;
+  updatedAt: number; // epoch ms
+}
+
+/** GET /api/owner/summary — one round trip for the dashboard. */
+export interface OwnerSummary {
+  stats: {
+    employees: number;
+    lowStock: number;
+    pendingApprovals: number;
+    monthSales: number;
+    prevMonthSales: number;
+    animals: number; // head count summed from the livestock registry
+    cropPlots: number; // registry entries
+    cropHa: number; // summed hectares
+  };
+  series: { month: string; value: number }[]; // six calendar months, ascending
+  sales: {
+    id: string;
+    date: string; // YYYY-MM-DD
+    customer: string;
+    item: string;
+    lineCount: number;
+    amount: number;
+    status: string;
+  }[];
+  lowStock: LowStockRow[];
+  pending: { attendance: number; credit: number };
+  activities: {
+    id: string;
+    title: string;
+    assignee: string;
+    dept: Department | null;
+    due: string; // YYYY-MM-DD
+  }[];
+  recent: {
+    kind: 'entry' | 'expense' | 'sale' | 'crop' | 'animal';
+    title: string;
+    sub: string;
+    at: number; // epoch ms
+    dept: Department | null;
+    amount: number | null;
+  }[];
+}
+
+/** GET /api/owner/department/:code — one owner management page. */
+export interface DeptPage {
+  dept: string;
+  meta: {
+    entriesThisWeek: number;
+    activities: string[];
+    lastEntryAt: number | null;
+    lastEntryBy: string | null;
+    lastEntryPlace: string | null;
+    openAlerts: number;
+  };
+  lowStock: LowStockRow[];
+  dueTasks: {
+    id: string;
+    title: string;
+    due: string; // YYYY-MM-DD
+    assignee: string;
+    overdue: boolean;
+  }[];
+  updates: {
+    id: string;
+    at: number; // epoch ms
+    author: string;
+    activity: string;
+    place: string;
+    subject: string;
+    measure: string;
+    notes: string;
+  }[];
+}
+
+/** GET/POST /api/crops row. */
+export interface CropRec {
+  id: string;
+  name: string;
+  variety: string;
+  areaHa: number | null;
+  plantedDate: string | null; // YYYY-MM-DD
+  notes: string;
+  createdBy: string;
+  createdAt: number; // epoch ms
+}
+
+/** GET/POST /api/livestock row. */
+export interface LivestockRec {
+  id: string;
+  species: string;
+  breed: string;
+  quantity: number;
+  location: string;
+  acquiredDate: string | null; // YYYY-MM-DD
+  notes: string;
+  createdBy: string;
+  createdAt: number; // epoch ms
+}
+
+/** GET /api/sales/options — the Record Sale form's pickers. */
+export interface SaleOptions {
+  customers: { id: string; name: string; phone: string }[];
+  items: {
+    id: string;
+    name: string;
+    code: string;
+    unit: string;
+    qty: number;
+    reorderLevel: number;
+    unitCost: number;
+  }[];
+}
+
+/** One line of POST /api/sales (itemId links the line to stock). */
+export interface SaleLineInput {
+  itemId?: string | number | null;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+/** A row of GET /api/users as the owner's staff list shows it. */
+export type StaffRec = ApiUser;
 
 const fresh = (): LoadState => ({ loading: false, loaded: false, error: '' });
 
@@ -160,6 +301,14 @@ export class FarmApiService {
   private readonly _deptReports = signal<WorkerReportRec[]>([]);
   private readonly _opsReports = signal<GeneratedReport[]>([]);
 
+  /* --- owner loop (Phase 2D) --- */
+  private readonly _ownerSummary = signal<OwnerSummary | null>(null);
+  private readonly _deptCrops = signal<DeptPage | null>(null);
+  private readonly _deptLivestock = signal<DeptPage | null>(null);
+  private readonly _crops = signal<CropRec[]>([]);
+  private readonly _livestock = signal<LivestockRec[]>([]);
+  private readonly _staff = signal<StaffRec[]>([]);
+
   private readonly _state = signal<Record<Collection, LoadState>>({
     tasks: fresh(),
     attendance: fresh(),
@@ -172,6 +321,12 @@ export class FarmApiService {
     myTransactions: fresh(),
     deptReports: fresh(),
     opsReports: fresh(),
+    ownerSummary: fresh(),
+    deptCrops: fresh(),
+    deptLivestock: fresh(),
+    crops: fresh(),
+    livestock: fresh(),
+    staff: fresh(),
   });
 
   /* ---------------- read-only views ---------------- */
@@ -187,6 +342,12 @@ export class FarmApiService {
   readonly myTransactions = this._myTransactions.asReadonly();
   readonly deptReports = this._deptReports.asReadonly();
   readonly opsReports = this._opsReports.asReadonly();
+  readonly ownerSummary = this._ownerSummary.asReadonly();
+  readonly deptCrops = this._deptCrops.asReadonly();
+  readonly deptLivestock = this._deptLivestock.asReadonly();
+  readonly crops = this._crops.asReadonly();
+  readonly livestock = this._livestock.asReadonly();
+  readonly staff = this._staff.asReadonly();
 
   readonly tasksLoading = computed(() => this._state().tasks.loading);
   readonly tasksError = computed(() => this._state().tasks.error);
@@ -210,6 +371,18 @@ export class FarmApiService {
   readonly deptReportsError = computed(() => this._state().deptReports.error);
   readonly opsReportsLoading = computed(() => this._state().opsReports.loading);
   readonly opsReportsError = computed(() => this._state().opsReports.error);
+  readonly ownerSummaryLoading = computed(() => this._state().ownerSummary.loading);
+  readonly ownerSummaryError = computed(() => this._state().ownerSummary.error);
+  readonly deptCropsLoading = computed(() => this._state().deptCrops.loading);
+  readonly deptCropsError = computed(() => this._state().deptCrops.error);
+  readonly deptLivestockLoading = computed(() => this._state().deptLivestock.loading);
+  readonly deptLivestockError = computed(() => this._state().deptLivestock.error);
+  readonly cropsLoading = computed(() => this._state().crops.loading);
+  readonly cropsError = computed(() => this._state().crops.error);
+  readonly livestockLoading = computed(() => this._state().livestock.loading);
+  readonly livestockError = computed(() => this._state().livestock.error);
+  readonly staffLoading = computed(() => this._state().staff.loading);
+  readonly staffError = computed(() => this._state().staff.error);
 
   /** The shift that is open right now (clocked in, no clock-out). */
   readonly runningRecord = computed<AttendanceRec | null>(
@@ -282,6 +455,23 @@ export class FarmApiService {
           '/reports/department',
         );
         this._deptReports.set(res.reports ?? []);
+      } else if (col === 'ownerSummary') {
+        const res = await this.get<OwnerSummary>('/owner/summary');
+        this._ownerSummary.set(res);
+      } else if (col === 'deptCrops' || col === 'deptLivestock') {
+        const code = col === 'deptCrops' ? 'crops' : 'livestock';
+        const res = await this.get<DeptPage>(`/owner/department/${code}`);
+        if (col === 'deptCrops') this._deptCrops.set(res);
+        else this._deptLivestock.set(res);
+      } else if (col === 'crops') {
+        const res = await this.get<{ crops: CropRec[] }>('/crops');
+        this._crops.set(res.crops ?? []);
+      } else if (col === 'livestock') {
+        const res = await this.get<{ livestock: LivestockRec[] }>('/livestock');
+        this._livestock.set(res.livestock ?? []);
+      } else if (col === 'staff') {
+        const res = await this.get<{ users: ApiUser[] }>('/users');
+        this._staff.set(res.users ?? []);
       } else {
         const res = await this.get<{ generated: GeneratedReport[] }>(
           '/reports/operations',
@@ -386,6 +576,87 @@ export class FarmApiService {
     periodStart: string; // YYYY-MM-DD
   }): Promise<ActionResult> {
     return this.send('POST', '/reports/operations', input, 'opsReports');
+  }
+
+  /* ---------------- owner actions (2D) ---------------- */
+
+  /** Adds a crop to the registry (POST /crops). */
+  addCrop(input: {
+    name: string;
+    variety?: string;
+    areaHa?: number | null;
+    plantedDate?: string; // YYYY-MM-DD
+    notes?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/crops', input, 'crops');
+  }
+
+  /** Adds a livestock group to the registry (POST /livestock). */
+  addAnimal(input: {
+    species: string;
+    breed?: string;
+    quantity?: number;
+    location?: string;
+    acquiredDate?: string; // YYYY-MM-DD
+    notes?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/livestock', input, 'livestock');
+  }
+
+  /** Records an expense (POST /expenses) and refreshes the dashboard. */
+  addExpense(input: {
+    category: string;
+    description: string;
+    amount: number;
+    date?: string; // YYYY-MM-DD
+    paymentMethod?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/expenses', input, 'ownerSummary');
+  }
+
+  /** Records a sale with stock deduction (POST /sales). */
+  recordSale(input: {
+    customerName?: string;
+    customerId?: string;
+    lines: SaleLineInput[];
+    paymentMethod?: string;
+    paymentStatus?: string;
+    notes?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/sales', input, 'ownerSummary');
+  }
+
+  /** Recruits a worker or supervisor into a department (POST /users). */
+  recruitMember(input: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'worker' | 'supervisor';
+    department: Department;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/users', input, 'staff');
+  }
+
+  /** Deactivates a staff member's account (DELETE /users/:id). */
+  removeMember(id: string): Promise<ActionResult> {
+    return this.send('DELETE', `/users/${id}`, undefined, 'staff');
+  }
+
+  /**
+   * Fresh Record Sale pickers — customers and sellable stock are
+   * re-read every time the modal opens (quantities change per sale).
+   */
+  async fetchSaleOptions(): Promise<{
+    ok: boolean;
+    options?: SaleOptions;
+    message: string;
+  }> {
+    try {
+      const options = await this.get<SaleOptions>('/sales/options');
+      return { ok: true, options, message: '' };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err) };
+    }
   }
 
   /* ---------------- internals ---------------- */

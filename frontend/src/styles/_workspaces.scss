@@ -46,6 +46,14 @@
     }
   }
 
+  /* Active / inactive tally above a team list */
+  &__count {
+    margin: -4px 0 2px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $muted;
+  }
+
   /* At-a-glance tile rows: size to the tiles the row actually holds,
      so the supervisor home row's 4th tile sits beside the others
      instead of wrapping. Owner pages keep their fixed 3-up layout

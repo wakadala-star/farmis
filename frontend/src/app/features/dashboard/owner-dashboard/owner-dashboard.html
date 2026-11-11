@@ -1,196 +1,808 @@
-<section class="dash-grid" aria-label="Farm overview">
-  <!-- ============ Stat cards ============ -->
-  @for (stat of stats; track stat.label) {
-    <article [class]="'stat stat--' + stat.tone">
-      <span class="stat__icon"><i [class]="stat.icon"></i></span>
-      <div class="stat__body">
-        <div class="stat__row">
-          <span class="stat__value">{{ stat.value }}</span>
-          <span class="stat__trend">
-            <i class="fa-solid fa-arrow-up"></i>{{ stat.trend }}
-          </span>
+@if (notice()) {
+  <div class="form-alert form-alert--success" role="status">
+    <i class="fa-solid fa-circle-check"></i>
+    <span>{{ notice() }}</span>
+    <button type="button" class="btn-mini" (click)="dismissNotice()">Dismiss</button>
+  </div>
+}
+
+@if (loading() && !summary()) {
+  <p class="empty-state">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    Loading your farm overview…
+  </p>
+} @else if (loadError() && !summary()) {
+  <div class="form-alert form-alert--error">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span>{{ loadError() }}</span>
+    <button type="button" class="btn-mini" (click)="retry()">Retry</button>
+  </div>
+} @else if (summary()) {
+  <section class="dash-grid" aria-label="Farm overview">
+    <!-- ============ Stat cards (2 rows × 3) ============ -->
+    @for (stat of stats(); track stat.label) {
+      <article [class]="'stat stat--' + stat.tone">
+        <span class="stat__icon"><i [class]="stat.icon"></i></span>
+        <div class="stat__body">
+          <div class="stat__row">
+            <span class="stat__value">{{ stat.value }}</span>
+            @if (stat.trend) {
+              <span [class]="'stat__trend' + (stat.down ? ' is-down' : '')">
+                <i
+                  [class]="stat.down ? 'fa-solid fa-arrow-down' : 'fa-solid fa-arrow-up'"
+                ></i
+                >{{ stat.trend }}
+              </span>
+            }
+          </div>
+          <span class="stat__label">{{ stat.label }}</span>
         </div>
-        <span class="stat__label">{{ stat.label }}</span>
+      </article>
+    }
+
+    <!-- ============ Farm performance ============ -->
+    <article class="widget widget--perf">
+      <header class="widget__head">
+        <i class="fa-solid fa-chart-column widget__icon"></i>
+        <h2 class="widget__title">Farm Performance</h2>
+        <div class="widget__action">
+          <span class="widget__hint-label">Last 6 months · UGX</span>
+        </div>
+      </header>
+
+      <div class="chart-legend">
+        <span><i class="is-sales"></i> Sales</span>
+      </div>
+
+      <div class="widget__body">
+        <app-performance-chart [data]="chartSeries()" />
       </div>
     </article>
-  }
 
-  <!-- ============ Farm performance ============ -->
-  <article class="widget widget--perf">
-    <header class="widget__head">
-      <i class="fa-solid fa-chart-column widget__icon"></i>
-      <h2 class="widget__title">Farm Performance</h2>
-      <div class="widget__action">
-        <span class="widget__viewall-mobile view-all">
-          View All <i class="fa-solid fa-arrow-right"></i>
-        </span>
-        <div class="select-mini-wrap">
-          <select class="select-mini" aria-label="Chart period">
-            <option>This Year</option>
-            <option>Last Year</option>
-          </select>
+    <!-- ============ Alerts ============ -->
+    <article class="widget widget--alerts">
+      <header class="widget__head">
+        <i class="fa-solid fa-bell widget__icon"></i>
+        <h2 class="widget__title">Alerts &amp; Notifications</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ alerts().length }}</span>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <div class="chart-legend">
-      <span><i class="is-crops"></i> Crops</span>
-      <span><i class="is-livestock"></i> Livestock</span>
-    </div>
-
-    <div class="widget__body">
-      <app-performance-chart [data]="series" [max]="3000" />
-    </div>
-  </article>
-
-  <!-- ============ Alerts ============ -->
-  <article class="widget widget--alerts">
-    <header class="widget__head">
-      <i class="fa-solid fa-bell widget__icon"></i>
-      <h2 class="widget__title">Alerts &amp; Notifications</h2>
-      <div class="widget__action">
-        <span class="view-all" title="Coming soon">
-          View All <i class="fa-solid fa-arrow-right"></i>
-        </span>
-      </div>
-    </header>
-
-    <div class="widget__body">
-      @for (alert of alerts; track alert.title) {
-        <div [class]="'alert-row alert-row--' + alert.tone">
-          <span class="alert-row__icon"><i [class]="alert.icon"></i></span>
-          <div class="alert-row__main">
-            <p class="alert-row__title">{{ alert.title }}</p>
-            <p class="alert-row__text">{{ alert.text }}</p>
-          </div>
-          <span class="alert-row__time">{{ alert.time }}</span>
-        </div>
-      }
-    </div>
-  </article>
-
-  <!-- ============ Promo ============ -->
-  <aside
-    class="promo"
-    [ngStyle]="{ '--promo-img': promoImage }"
-    aria-label="Growing a productive farm"
-  >
-    <i class="fa-solid fa-leaf promo__leaf" aria-hidden="true"></i>
-    <div class="promo__content">
-      <h2 class="promo__title">Growing a Productive Farm</h2>
-      <p class="promo__sub">Together with FARMIS</p>
-      <span class="promo__btn" title="Coming soon">
-        Learn More <i class="fa-solid fa-arrow-right"></i>
-      </span>
-    </div>
-  </aside>
-
-  <!-- ============ Recent sales ============ -->
-  <article class="widget widget--sales">
-    <header class="widget__head">
-      <i class="fa-solid fa-cart-shopping widget__icon"></i>
-      <h2 class="widget__title">Recent Sales</h2>
-      <div class="widget__action">
-        <span class="view-all" title="Coming soon">
-          View All <i class="fa-solid fa-arrow-right"></i>
-        </span>
-      </div>
-    </header>
-
-    <div class="widget__body">
-      <table class="sales-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Item</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (sale of sales; track sale.date) {
-            <tr>
-              <td class="is-date" data-label="Date">{{ sale.date }}</td>
-              <td class="is-strong" data-label="Customer">{{ sale.customer }}</td>
-              <td data-label="Item">{{ sale.item }}</td>
-              <td class="is-strong is-amount" data-label="Amount">{{ sale.amount }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </article>
-
-  <!-- ============ Upcoming activities ============ -->
-  <article class="widget widget--activities">
-    <header class="widget__head">
-      <i class="fa-regular fa-calendar widget__icon"></i>
-      <h2 class="widget__title">Upcoming Activities</h2>
-      <div class="widget__action">
-        <span class="view-all" title="Coming soon">
-          View All <i class="fa-solid fa-arrow-right"></i>
-        </span>
-      </div>
-    </header>
-
-    <div class="widget__body">
-      @for (activity of activities; track activity.title) {
-        <div class="activity">
-          <div class="activity__date">
-            <span class="activity__day">{{ activity.day }}</span>
-            <span class="activity__month">{{ activity.month }}</span>
-          </div>
-          <div class="activity__main">
-            <p class="activity__title">{{ activity.title }}</p>
-            <p class="activity__sub">{{ activity.sub }}</p>
-          </div>
-          <span [class]="'chip chip--' + activity.chipTone">{{ activity.chip }}</span>
-        </div>
-      }
-    </div>
-  </article>
-
-  <!-- ============ Quick actions (tablet & mobile) ============ -->
-  <article class="widget widget--quick">
-    <header class="widget__head">
-      <i class="fa-solid fa-bolt widget__icon"></i>
-      <h2 class="widget__title">Quick Actions</h2>
-      <div class="widget__action">
-        <span class="view-all" title="Coming soon">
-          View All <i class="fa-solid fa-arrow-right"></i>
-        </span>
-      </div>
-    </header>
-
-    <div class="widget__body">
-      <div class="quick-grid">
-        @for (action of quickActions; track action.label) {
-          <div class="quick-action" [title]="action.label + ' — coming soon'">
-            <i [class]="action.icon"></i>
-            <span>{{ action.label }}</span>
+      <div class="widget__body">
+        @for (alert of alerts(); track alert.key) {
+          <div [class]="'alert-row alert-row--' + alert.tone">
+            <span class="alert-row__icon"><i [class]="alert.icon"></i></span>
+            <div class="alert-row__main">
+              <p class="alert-row__title">{{ alert.title }}</p>
+              <p class="alert-row__text">{{ alert.text }}</p>
+            </div>
+            <span class="alert-row__time">{{ alert.time }}</span>
           </div>
         }
       </div>
-    </div>
-  </article>
+    </article>
 
-  <!-- ============ Recent activity (tablet & mobile) ============ -->
-  <article class="widget widget--recent">
-    <header class="widget__head">
-      <i class="fa-solid fa-list-check widget__icon"></i>
-      <h2 class="widget__title">Recent Activity</h2>
-    </header>
+    <!-- ============ Promo ============ -->
+    <aside
+      class="promo"
+      [ngStyle]="{ '--promo-img': promoImage }"
+      aria-label="Growing a productive farm"
+    >
+      <i class="fa-solid fa-leaf promo__leaf" aria-hidden="true"></i>
+      <div class="promo__content">
+        <h2 class="promo__title">Growing a Productive Farm</h2>
+        <p class="promo__sub">Together with FARMIS</p>
+        <span class="promo__btn" title="Coming soon">
+          Learn More <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </aside>
 
-    <div class="widget__body">
-      @for (row of recent; track row.title) {
-        <div [class]="'recent-row recent-row--' + row.tone">
-          <span class="recent-row__icon"><i [class]="row.icon"></i></span>
-          <div class="recent-row__main">
-            <p class="recent-row__title">{{ row.title }}</p>
-          </div>
-          <span class="recent-row__time">{{ row.time }}</span>
+    <!-- ============ Recent sales ============ -->
+    <article class="widget widget--sales">
+      <header class="widget__head">
+        <i class="fa-solid fa-cart-shopping widget__icon"></i>
+        <h2 class="widget__title">Recent Sales</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ salesRows().length }}</span>
         </div>
-      }
+      </header>
+
+      <div class="widget__body">
+        <table class="sales-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Item</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sale of salesRows(); track sale.id) {
+              <tr>
+                <td class="is-date" data-label="Date">{{ sale.date }}</td>
+                <td class="is-strong" data-label="Customer">{{ sale.customer }}</td>
+                <td data-label="Item">{{ sale.item }}</td>
+                <td class="is-strong is-amount" data-label="Amount">{{ sale.amount }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="is-empty">No sales recorded yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <!-- ============ Upcoming activities ============ -->
+    <article class="widget widget--activities">
+      <header class="widget__head">
+        <i class="fa-regular fa-calendar widget__icon"></i>
+        <h2 class="widget__title">Upcoming Activities</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ activityRows().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (activity of activityRows(); track activity.id) {
+          <div class="activity">
+            <div class="activity__date">
+              <span class="activity__day">{{ activity.day }}</span>
+              <span class="activity__month">{{ activity.month }}</span>
+            </div>
+            <div class="activity__main">
+              <p class="activity__title">{{ activity.title }}</p>
+              <p class="activity__sub">{{ activity.sub }}</p>
+            </div>
+            <span [class]="'chip chip--' + activity.chipTone">{{ activity.chip }}</span>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-regular fa-calendar"></i>
+            No tasks due in the next 7 days.
+          </p>
+        }
+      </div>
+    </article>
+
+    <!-- ============ Quick actions ============ -->
+    <article class="widget widget--quick">
+      <header class="widget__head">
+        <i class="fa-solid fa-bolt widget__icon"></i>
+        <h2 class="widget__title">Quick Actions</h2>
+        <div class="widget__action">
+          <span class="widget__hint-label">Straight to the ledger</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        <div class="quick-grid">
+          @for (action of quickActions; track action.label) {
+            <button type="button" class="quick-action" (click)="openModal(action.kind)">
+              <i [class]="action.icon"></i>
+              <span>{{ action.label }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    </article>
+
+    <!-- ============ Recent activity ============ -->
+    <article class="widget widget--recent">
+      <header class="widget__head">
+        <i class="fa-solid fa-list-check widget__icon"></i>
+        <h2 class="widget__title">Recent Activity</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ recentRows().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (row of recentRows(); track row.id) {
+          <div [class]="'recent-row recent-row--' + row.tone">
+            <span class="recent-row__icon"><i [class]="row.icon"></i></span>
+            <div class="recent-row__main">
+              <p class="recent-row__title">{{ row.title }}</p>
+            </div>
+            <span class="recent-row__time">{{ row.time }}</span>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-list-check"></i>
+            Nothing recorded yet.
+          </p>
+        }
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ Quick-action modals ============ -->
+  @if (modal(); as kind) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="modalTitle(kind)"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="modal__head">
+          <span class="modal__icon"><i [class]="modalIcon(kind)"></i></span>
+          <h2 class="modal__title">{{ modalTitle(kind) }}</h2>
+          <button
+            type="button"
+            class="modal__close"
+            aria-label="Close"
+            [disabled]="submitting()"
+            (click)="closeModal()"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </header>
+
+        @if (modalError()) {
+          <div class="form-alert form-alert--error modal__alert">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ modalError() }}</span>
+          </div>
+        }
+
+        @switch (kind) {
+          @case ('crop') {
+            <form
+              [formGroup]="cropForm"
+              (submit)="$event.preventDefault(); submitModal()"
+            >
+              <div class="modal__body">
+                <div class="field">
+                  <label class="field__label" for="crop-name">Crop name *</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-seedling field__icon"></i>
+                    <input
+                      id="crop-name"
+                      class="input"
+                      [class.is-invalid]="fieldInvalid(cropForm, 'name')"
+                      formControlName="name"
+                      placeholder="e.g. Maize"
+                      autocomplete="off"
+                    />
+                  </div>
+                  @if (fieldInvalid(cropForm, 'name')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Enter a crop name (2–120 characters).
+                    </span>
+                  }
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="crop-variety">Variety</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-tag field__icon"></i>
+                    <input
+                      id="crop-variety"
+                      class="input"
+                      formControlName="variety"
+                      placeholder="e.g. Hybrid 614"
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field__label" for="crop-area">Area (ha)</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-ruler-combined field__icon"></i>
+                      <input
+                        id="crop-area"
+                        class="input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        formControlName="areaHa"
+                        placeholder="e.g. 2.5"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="crop-planted">Planted</label>
+                    <div class="field__box">
+                      <i class="fa-regular fa-calendar field__icon"></i>
+                      <input
+                        id="crop-planted"
+                        class="input"
+                        type="date"
+                        formControlName="plantedDate"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="crop-notes">Notes</label>
+                  <textarea
+                    id="crop-notes"
+                    class="input input--area"
+                    rows="2"
+                    formControlName="notes"
+                    placeholder="Plot, irrigation, inputs…"
+                  ></textarea>
+                </div>
+              </div>
+
+              <footer class="modal__foot">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  [disabled]="submitting()"
+                  (click)="closeModal()"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn--save" [disabled]="submitting()">
+                  @if (submitting()) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Saving…
+                  } @else {
+                    Save Crop
+                  }
+                </button>
+              </footer>
+            </form>
+          }
+
+          @case ('animal') {
+            <form
+              [formGroup]="animalForm"
+              (submit)="$event.preventDefault(); submitModal()"
+            >
+              <div class="modal__body">
+                <div class="field">
+                  <label class="field__label" for="animal-species">Species *</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-cow field__icon"></i>
+                    <input
+                      id="animal-species"
+                      class="input"
+                      [class.is-invalid]="fieldInvalid(animalForm, 'species')"
+                      formControlName="species"
+                      placeholder="e.g. Broiler"
+                      autocomplete="off"
+                    />
+                  </div>
+                  @if (fieldInvalid(animalForm, 'species')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Enter a species (2–80 characters).
+                    </span>
+                  }
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field__label" for="animal-breed">Breed</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-tag field__icon"></i>
+                      <input
+                        id="animal-breed"
+                        class="input"
+                        formControlName="breed"
+                        placeholder="e.g. Cobb 500"
+                        autocomplete="off"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="animal-qty">Head count</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-hashtag field__icon"></i>
+                      <input
+                        id="animal-qty"
+                        class="input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        formControlName="quantity"
+                        placeholder="e.g. 300"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="animal-location">Location</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-location-dot field__icon"></i>
+                    <input
+                      id="animal-location"
+                      class="input"
+                      formControlName="location"
+                      placeholder="e.g. Broiler Unit"
+                      autocomplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="animal-acquired">Acquired</label>
+                  <div class="field__box">
+                    <i class="fa-regular fa-calendar field__icon"></i>
+                    <input
+                      id="animal-acquired"
+                      class="input"
+                      type="date"
+                      formControlName="acquiredDate"
+                    />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="animal-notes">Notes</label>
+                  <textarea
+                    id="animal-notes"
+                    class="input input--area"
+                    rows="2"
+                    formControlName="notes"
+                    placeholder="Health, feed, source…"
+                  ></textarea>
+                </div>
+              </div>
+
+              <footer class="modal__foot">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  [disabled]="submitting()"
+                  (click)="closeModal()"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn--save" [disabled]="submitting()">
+                  @if (submitting()) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Saving…
+                  } @else {
+                    Add Animal
+                  }
+                </button>
+              </footer>
+            </form>
+          }
+
+          @case ('expense') {
+            <form
+              [formGroup]="expenseForm"
+              (submit)="$event.preventDefault(); submitModal()"
+            >
+              <div class="modal__body">
+                <div class="field">
+                  <label class="field__label" for="exp-category">Category *</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-folder field__icon"></i>
+                    <select
+                      id="exp-category"
+                      class="select"
+                      [class.is-invalid]="fieldInvalid(expenseForm, 'category')"
+                      formControlName="category"
+                    >
+                      <option value="" disabled>Choose a category…</option>
+                      <option value="feed">Feed</option>
+                      <option value="medicine">Medicine</option>
+                      <option value="fuel">Fuel</option>
+                      <option value="salaries">Salaries</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="equipment">Equipment</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  @if (fieldInvalid(expenseForm, 'category')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Choose an expense category.
+                    </span>
+                  }
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="exp-description">Description *</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-pencil field__icon"></i>
+                    <input
+                      id="exp-description"
+                      class="input"
+                      [class.is-invalid]="fieldInvalid(expenseForm, 'description')"
+                      formControlName="description"
+                      placeholder="e.g. 10 bags of layers mash"
+                      autocomplete="off"
+                    />
+                  </div>
+                  @if (fieldInvalid(expenseForm, 'description')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Describe the expense (2–255 characters).
+                    </span>
+                  }
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field__label" for="exp-amount">Amount (UGX) *</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-coins field__icon"></i>
+                      <input
+                        id="exp-amount"
+                        class="input"
+                        type="number"
+                        min="0"
+                        step="any"
+                        [class.is-invalid]="fieldInvalid(expenseForm, 'amount')"
+                        formControlName="amount"
+                        placeholder="e.g. 250000"
+                      />
+                    </div>
+                    @if (fieldInvalid(expenseForm, 'amount')) {
+                      <span class="field__error">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        Enter an amount greater than 0.
+                      </span>
+                    }
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="exp-date">Date</label>
+                    <div class="field__box">
+                      <i class="fa-regular fa-calendar field__icon"></i>
+                      <input
+                        id="exp-date"
+                        class="input"
+                        type="date"
+                        formControlName="date"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="exp-method">Paid with</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-wallet field__icon"></i>
+                    <select id="exp-method" class="select" formControlName="paymentMethod">
+                      <option value="cash">Cash</option>
+                      <option value="mobile_money">Mobile money</option>
+                      <option value="bank_transfer">Bank transfer</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <footer class="modal__foot">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  [disabled]="submitting()"
+                  (click)="closeModal()"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn--save" [disabled]="submitting()">
+                  @if (submitting()) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Saving…
+                  } @else {
+                    Save Expense
+                  }
+                </button>
+              </footer>
+            </form>
+          }
+
+          @case ('sale') {
+            <form
+              [formGroup]="saleForm"
+              (submit)="$event.preventDefault(); submitModal()"
+            >
+              <div class="modal__body">
+                @if (optionsState() === 'loading') {
+                  <p class="modal-hint">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Loading customers &amp; stock…
+                  </p>
+                } @else if (optionsState() === 'error') {
+                  <div class="form-alert form-alert--error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>{{ optionsError() }}</span>
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      (click)="retrySaleOptions()"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                }
+
+                <div class="field">
+                  <label class="field__label" for="sale-customer">Customer</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-store field__icon"></i>
+                    <select id="sale-customer" class="select" formControlName="customerId">
+                      <option value="">Walk-in (no customer)</option>
+                      <option value="new">New customer…</option>
+                      @for (customer of saleOptions()?.customers ?? []; track customer.id) {
+                        <option [value]="customer.id">{{ customer.name }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                @if (saleForm.controls.customerId.value === 'new') {
+                  <div class="field">
+                    <label class="field__label" for="sale-customer-name"
+                      >New customer name *</label
+                    >
+                    <div class="field__box">
+                      <i class="fa-solid fa-user-plus field__icon"></i>
+                      <input
+                        id="sale-customer-name"
+                        class="input"
+                        formControlName="customerName"
+                        placeholder="e.g. Agro Mart Ltd"
+                        autocomplete="off"
+                      />
+                    </div>
+                  </div>
+                }
+
+                <div class="sale-lines">
+                  <div class="sale-lines__head">
+                    <span class="field__label">Lines</span>
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      [disabled]="saleLines().length >= 20"
+                      (click)="addSaleLine()"
+                    >
+                      <i class="fa-solid fa-plus"></i> Add line
+                    </button>
+                  </div>
+
+                  @for (line of saleLines(); track $index) {
+                    <div class="sale-line">
+                      <div class="sale-line__grid">
+                        <select
+                          class="select select--line"
+                          [value]="line.itemId"
+                          (change)="onSaleItemChange($index, lineSel.value)"
+                          #lineSel
+                        >
+                          <option value="">Free-text item…</option>
+                          @for (item of saleOptions()?.items ?? []; track item.id) {
+                            <option [value]="item.id">
+                              {{ item.name }} ({{ item.qty }} {{ item.unit }})
+                            </option>
+                          }
+                        </select>
+                        <input
+                          class="input input--line"
+                          placeholder="Description"
+                          [value]="line.description"
+                          (input)="setSaleLine($index, { description: lineDesc.value })"
+                          #lineDesc
+                          autocomplete="off"
+                        />
+                        <input
+                          class="input input--line input--num"
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="Qty"
+                          [value]="line.quantity"
+                          (input)="setSaleLine($index, { quantity: lineQty.value })"
+                          #lineQty
+                        />
+                        <input
+                          class="input input--line input--num"
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="Unit price"
+                          [value]="line.unitPrice"
+                          (input)="setSaleLine($index, { unitPrice: linePrice.value })"
+                          #linePrice
+                        />
+                        <button
+                          type="button"
+                          class="line-remove"
+                          title="Remove line"
+                          [disabled]="saleLines().length <= 1"
+                          (click)="removeSaleLine($index)"
+                        >
+                          <i class="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                      <p class="sale-line__hint">{{ lineStockHint($index) }}</p>
+                    </div>
+                  }
+                </div>
+
+                <div class="sale-total">
+                  <span>Total (server-computed)</span>
+                  <strong>{{ fmtMoney(saleTotal()) }}</strong>
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field__label" for="sale-method">Paid with</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-wallet field__icon"></i>
+                      <select
+                        id="sale-method"
+                        class="select"
+                        formControlName="paymentMethod"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="mobile_money">Mobile money</option>
+                        <option value="bank_transfer">Bank transfer</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="sale-status">Status</label>
+                    <div class="field__box">
+                      <i class="fa-solid fa-circle-check field__icon"></i>
+                      <select
+                        id="sale-status"
+                        class="select"
+                        formControlName="paymentStatus"
+                      >
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="partial">Partial</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="sale-notes">Notes</label>
+                  <textarea
+                    id="sale-notes"
+                    class="input input--area"
+                    rows="2"
+                    formControlName="notes"
+                    placeholder="Optional (500 max)"
+                  ></textarea>
+                </div>
+              </div>
+
+              <footer class="modal__foot">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  [disabled]="submitting()"
+                  (click)="closeModal()"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn--save" [disabled]="submitting()">
+                  @if (submitting()) {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Saving…
+                  } @else {
+                    Record Sale
+                  }
+                </button>
+              </footer>
+            </form>
+          }
+        }
+      </div>
     </div>
-  </article>
-</section>
+  }
+}

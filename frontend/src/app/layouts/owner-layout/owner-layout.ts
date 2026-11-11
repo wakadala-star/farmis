@@ -29,10 +29,10 @@ interface PageMeta {
  * Owner-side application shell: desktop sidebar, sticky topbar,
  * mobile drawer + bottom navigation.
  *
- * Dashboard, Crop Management and Livestock Management are wired to
- * real screens; every other module carries a "Soon" badge and stays
- * inert until its screen is built. Sign out is fully wired to the
- * mock auth service.
+ * Dashboard, Crop Management, Livestock Management and Workers & HR
+ * are wired to real screens; every other module carries a "Soon"
+ * badge and stays inert until its screen is built. Sign out is fully
+ * wired to the auth service.
  */
 @Component({
   selector: 'app-owner-layout',
@@ -68,6 +68,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Livestock updates and alerts from your supervisors.`,
           mob: 'Livestock updates & alerts',
         };
+      case '/workers':
+        return {
+          title: 'Workers & HR',
+          sub: `Welcome back, ${name}! Recruit, review and manage your farm team.`,
+          mob: 'Team & recruitment',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -82,7 +88,7 @@ export class OwnerLayout {
     { label: 'Crop Management', icon: 'fa-solid fa-seedling', link: '/crops' },
     { label: 'Livestock Management', icon: 'fa-solid fa-cow', link: '/livestock' },
     { label: 'Inventory & Stores', icon: 'fa-solid fa-warehouse' },
-    { label: 'Workers & HR', icon: 'fa-solid fa-users' },
+    { label: 'Workers & HR', icon: 'fa-solid fa-users', link: '/workers' },
     { label: 'Procurement', icon: 'fa-solid fa-basket-shopping' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping' },
     { label: 'Finance', icon: 'fa-solid fa-wallet' },

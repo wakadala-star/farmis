@@ -1,0 +1,230 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Recruit workers and supervisors into either department, review the whole
+      farm team, or remove someone — removed accounts are deactivated and their
+      history stays.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="ws__grid">
+    <!-- ============ Recruit ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-user-plus widget__icon"></i>
+        <h2 class="widget__title">Recruit a Member</h2>
+      </header>
+
+      <div class="widget__body">
+        <form [formGroup]="form" (ngSubmit)="recruit()" novalidate>
+          <div class="field">
+            <label class="field__label" for="hr-name">Full name</label>
+            <div class="field__box">
+              <i class="fa-regular fa-user field__icon"></i>
+              <input
+                id="hr-name"
+                type="text"
+                class="input"
+                [class.is-invalid]="invalid('name')"
+                placeholder="e.g. Alex Musoke"
+                formControlName="name"
+              />
+            </div>
+            @if (invalid('name')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Enter the member’s full name.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="hr-email">Email address</label>
+            <div class="field__box">
+              <i class="fa-regular fa-envelope field__icon"></i>
+              <input
+                id="hr-email"
+                type="email"
+                class="input"
+                [class.is-invalid]="invalid('email')"
+                placeholder="member@farm.com"
+                formControlName="email"
+              />
+            </div>
+            @if (invalid('email')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Enter a valid email address.
+              </span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="hr-password">Initial password</label>
+            <div class="field__box">
+              <i class="fa-solid fa-key field__icon"></i>
+              <input
+                id="hr-password"
+                type="password"
+                class="input"
+                [class.is-invalid]="invalid('password')"
+                placeholder="At least 6 characters"
+                formControlName="password"
+              />
+            </div>
+            @if (invalid('password')) {
+              <span class="field__error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Set an initial password of at least 6 characters — give it to
+                the member so they can sign in.
+              </span>
+            }
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field__label" for="hr-role">Role</label>
+              <div class="field__box">
+                <i class="fa-solid fa-id-badge field__icon"></i>
+                <select id="hr-role" class="select" formControlName="role">
+                  <option value="worker">Worker</option>
+                  <option value="supervisor">Supervisor</option>
+                </select>
+              </div>
+              <span class="field__hint">
+                <i class="fa-solid fa-circle-info"></i>
+                Supervisors manage their department’s tasks and approvals.
+              </span>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="hr-dept">Department</label>
+              <div class="field__box">
+                <i class="fa-solid fa-sitemap field__icon"></i>
+                <select id="hr-dept" class="select" formControlName="department">
+                  <option value="crops">Crop Production</option>
+                  <option value="livestock">Animal Rearing</option>
+                </select>
+              </div>
+              <span class="field__hint">
+                <i class="fa-solid fa-circle-info"></i>
+                Their session scopes every screen they open.
+              </span>
+            </div>
+          </div>
+
+          <button
+            class="btn btn--primary"
+            type="submit"
+            [disabled]="submitting()"
+            [attr.aria-busy]="submitting()"
+          >
+            <span>Create Account</span>
+            @if (submitting()) {
+              <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+            } @else {
+              <i class="fa-solid fa-user-plus"></i>
+            }
+          </button>
+        </form>
+      </div>
+    </article>
+
+    <!-- ============ Farm team ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-users widget__icon"></i>
+        <h2 class="widget__title">Farm Team</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ staff().length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @if (loading()) {
+          <p class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading the team…
+          </p>
+        } @else if (loadError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ loadError() }}</span>
+            <button type="button" class="btn-mini" (click)="retry()">
+              Retry
+            </button>
+          </div>
+        } @else {
+          <p class="ws__count">
+            {{ activeCount() }} active · {{ staff().length - activeCount() }}
+            inactive
+          </p>
+          @for (member of staff(); track member.id) {
+            <div class="list-row">
+              <span class="list-row__avatar">{{ member.fullName.charAt(0) }}</span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ member.fullName }}</strong>
+                  <span [class]="roleChip(member.role)">{{
+                    roleLabel(member.role)
+                  }}</span>
+                  <span
+                    [class]="
+                      member.employmentStatus === 'active'
+                        ? 'chip chip--green'
+                        : 'chip chip--amber'
+                    "
+                    >{{
+                      member.employmentStatus === 'active' ? 'Active' : 'Inactive'
+                    }}</span
+                  >
+                </p>
+                <p class="list-row__sub">
+                  {{ member.email }} · {{ deptLabel(member.department) }} · joined
+                  {{ fmtDay(member.createdAt.slice(0, 10)) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                @if (canRemove(member)) {
+                  <button
+                    type="button"
+                    class="btn-mini btn-mini--no"
+                    title="Remove from the farm (deactivates the account)"
+                    [disabled]="removingId() === member.id"
+                    (click)="remove(member)"
+                  >
+                    @if (removingId() === member.id) {
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                    } @else {
+                      <i class="fa-solid fa-trash"></i>
+                    }
+                    Remove
+                  </button>
+                }
+              </div>
+            </div>
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-users"></i>
+              No accounts yet — recruit the first member with the form.
+            </p>
+          }
+        }
+      </div>
+    </article>
+  </div>
+</section>

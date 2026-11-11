@@ -67,8 +67,49 @@
               <p class="feed-row__text">{{ update.text }}</p>
             </div>
           </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-list-check"></i>
+            No supervisor updates yet.
+          </p>
         }
       </div>
     </article>
   </div>
+
+  <!-- ============ Registry list (optional) ============ -->
+  @if (list) {
+    <article class="widget">
+      <header class="widget__head">
+        <i [class]="list.icon + ' widget__icon'"></i>
+        <h2 class="widget__title">{{ list.title }}</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ list.rows.length }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @for (row of list.rows; track row.id) {
+          <div class="list-row">
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ row.title }}</strong>
+              </p>
+              @if (row.sub) {
+                <p class="list-row__sub">{{ row.sub }}</p>
+              }
+              @if (row.meta) {
+                <p class="list-row__meta">{{ row.meta }}</p>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-inbox"></i>
+            {{ list.empty }}
+          </p>
+        }
+      </div>
+    </article>
+  }
 </section>

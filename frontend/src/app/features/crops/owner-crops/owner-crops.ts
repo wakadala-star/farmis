@@ -1,92 +1,154 @@
-import { Component } from '@angular/core';
-import { ManagementPage, ManagementView } from '../../../shared/management-view/management-view';
+import { Component, computed, inject } from '@angular/core';
+import { FarmApiService } from '../../../core/farm-api.service';
+import { ago } from '../../../core/format';
+import { fmtDay } from '../../../core/farm-data.service';
+import {
+  ManagementPage,
+  ManagementView,
+  PageAlert,
+  PageUpdate,
+  RegistryList,
+} from '../../../shared/management-view/management-view';
 
 /**
- * Owner view of Crop Management.
- *
- * Supervisors do the field data entry; this screen only surfaces
- * their latest updates and anything that needs the owner's attention.
- * All data is mock until the backend is attached.
+ * Owner view of Crop Management — live against the API: meta-tile
+ * numbers, low-stock + due-task alerts, the latest supervisor
+ * entries and the crop registry (rows created by the owner's
+ * Add Crop action or the supervisors' forms).
  */
 @Component({
   selector: 'app-owner-crops',
   imports: [ManagementView],
-  template: '<app-management-view [page]="page" />',
+  template: `
+    @if (loading() && !page()) {
+      <p class="empty-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        Loading crop management…
+      </p>
+    } @else if (error() && !page()) {
+      <div class="form-alert form-alert--error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>{{ error() }}</span>
+        <button type="button" class="btn-mini" (click)="retry()">Retry</button>
+      </div>
+    } @else if (page(); as p) {
+      <app-management-view [page]="p" [list]="list()" />
+    }
+  `,
 })
 export class OwnerCrops {
-  readonly page: ManagementPage = {
-    note: 'Supervisors record all field data — their latest entries and anything needing your attention appear here.',
-    meta: [
-      {
-        icon: 'fa-solid fa-triangle-exclamation',
-        tone: 'amber',
-        value: '2',
-        label: 'Open alerts',
-        hint: '1 needs action this week',
-      },
-      {
-        icon: 'fa-regular fa-clock',
-        tone: 'green',
-        value: '2h ago',
-        label: 'Last supervisor entry',
-        hint: 'Grace N. · Field B',
-      },
-      {
-        icon: 'fa-solid fa-list-check',
-        tone: 'blue',
-        value: '4',
-        label: 'Entries this week',
-        hint: 'Weeding · Planting · Input',
-      },
-    ],
-    alerts: [
-      {
-        icon: 'fa-solid fa-bug',
-        tone: 'warn',
-        title: 'Fall armyworm risk',
-        text: 'Scout Field B this week — regional advisory issued',
-        time: '1d ago',
-      },
-      {
-        icon: 'fa-solid fa-seedling',
-        tone: 'warn',
-        title: 'Bean seeds running low',
-        text: 'Only 5 kg left — reorder before the next planting',
-        time: '3h ago',
-      },
-      {
-        icon: 'fa-regular fa-calendar',
-        tone: 'info',
-        title: 'Maize harvest window',
-        text: 'Plot A ready in about 7 days — start arranging transport',
-        time: '2d ago',
-      },
-    ],
-    updates: [
-      {
-        when: 'Today · 09:40',
-        author: 'Grace N.',
-        tag: 'Progress',
-        text: 'Weeding completed — Field B (2 ha maize)',
-      },
-      {
-        when: 'Yesterday',
-        author: 'Moses K.',
-        tag: 'Planting',
-        text: 'Planted 5 kg maize seeds — Field A',
-      },
-      {
-        when: 'Nov 6',
-        author: 'Grace N.',
-        tag: 'Input',
-        text: 'Fertilizer applied — Plot C (20 kg NPK)',
-      },
-      {
-        when: 'Nov 5',
-        author: 'Moses K.',
-        tag: 'Check',
-        text: 'Soil moisture good — no irrigation needed today',
-      },
-    ],
-  };
+  private readonly api = inject(FarmApiService);
+
+  readonly loading = this.api.deptCropsLoading;
+  readonly error = this.api.deptCropsError;
+
+  readonly page = computed<ManagementPage | null>(() => {
+    const d = this.api.deptCrops();
+    if (!d) return null;
+
+    const alerts: PageAlert[] = d.lowStock.map((row) => ({
+      icon: 'fa-solid fa-warehouse',
+      tone: 'warn',
+      title: row.name,
+      text: `Only ${row.qty} ${row.unit} left — reorder at ${row.reorderLevel}`,
+      time: ago(row.updatedAt),
+    }));
+    alerts.push(
+      ...d.dueTasks.map((task) => ({
+        icon: task.overdue
+          ? 'fa-solid fa-triangle-exclamation'
+          : 'fa-regular fa-calendar',
+        tone: (task.overdue ? 'warn' : 'info') as 'warn' | 'info',
+        title: task.title,
+        text: `Due ${fmtDay(task.due)} · ${task.assignee}`,
+        time: task.overdue ? 'Overdue' : fmtDay(task.due),
+      })),
+    );
+    if (!alerts.length) {
+      alerts.push({
+        icon: 'fa-solid fa-circle-check',
+        tone: 'ok',
+        title: 'Nothing needs attention',
+        text: 'No low stock and no crop tasks due in the next 7 days.',
+        time: 'Now',
+      });
+    }
+
+    const updates: PageUpdate[] = d.updates.map((u) => {
+      const parts = [u.place, u.subject, u.measure].filter(Boolean).join(' · ');
+      return {
+        when: ago(u.at),
+        author: u.author,
+        tag: u.activity,
+        text: u.notes || parts || u.activity,
+      };
+    });
+
+    return {
+      note: 'Supervisors record all field data — their latest entries and anything needing your attention appear here.',
+      meta: [
+        {
+          icon: 'fa-solid fa-triangle-exclamation',
+          tone: 'amber',
+          value: String(d.meta.openAlerts),
+          label: 'Open alerts',
+          hint: `${d.lowStock.length} low stock · ${d.dueTasks.length} due soon`,
+        },
+        {
+          icon: 'fa-regular fa-clock',
+          tone: 'green',
+          value: d.meta.lastEntryAt ? ago(d.meta.lastEntryAt) : '—',
+          label: 'Last supervisor entry',
+          hint:
+            [d.meta.lastEntryBy, d.meta.lastEntryPlace]
+              .filter(Boolean)
+              .join(' · ') || 'No entries yet',
+        },
+        {
+          icon: 'fa-solid fa-list-check',
+          tone: 'blue',
+          value: String(d.meta.entriesThisWeek),
+          label: 'Entries this week',
+          hint: d.meta.activities.slice(0, 3).join(' · ') || 'No activities yet',
+        },
+      ],
+      alerts,
+      updates,
+    };
+  });
+
+  readonly list = computed<RegistryList | null>(() => {
+    if (!this.page()) return null;
+    const empty = this.api.cropsLoading()
+      ? 'Loading the crop registry…'
+      : this.api.cropsError() ||
+        'No crops registered yet — add one from the dashboard Quick Actions.';
+    return {
+      title: 'Crop Registry',
+      icon: 'fa-solid fa-seedling',
+      rows: this.api.crops().map((crop) => ({
+        id: crop.id,
+        title: crop.variety ? `${crop.name} · ${crop.variety}` : crop.name,
+        sub: crop.notes || `By ${crop.createdBy}`,
+        meta: [
+          crop.plantedDate ? `Planted ${fmtDay(crop.plantedDate)}` : '',
+          crop.areaHa != null ? `${crop.areaHa} ha` : '',
+          `Added ${ago(crop.createdAt)}`,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })),
+      empty,
+    };
+  });
+
+  constructor() {
+    void this.api.ensure('deptCrops');
+    void this.api.ensure('crops');
+  }
+
+  retry(): void {
+    void this.api.ensure('deptCrops');
+    void this.api.ensure('crops');
+  }
 }

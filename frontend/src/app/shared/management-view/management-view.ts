@@ -26,6 +26,22 @@ export interface PageUpdate {
   text: string;
 }
 
+/** One row of the optional registry list (crops / livestock). */
+export interface RegistryRow {
+  id: string;
+  title: string;
+  sub: string;
+  meta: string;
+}
+
+/** Optional registry section shown under the alerts + updates grid. */
+export interface RegistryList {
+  title: string;
+  icon: string;
+  rows: RegistryRow[];
+  empty: string;
+}
+
 /** Everything an owner-side management page displays. */
 export interface ManagementPage {
   note: string;
@@ -37,11 +53,11 @@ export interface ManagementPage {
 /**
  * Shared layout for the owner-side Crop and Livestock management
  * pages: a supervisor-context note, three meta tiles, a "needs
- * attention" alert list and a feed of recent supervisor updates.
+ * attention" alert list, a feed of recent supervisor updates and
+ * (optionally) the page's registry list.
  *
- * Read-only by design — all data entry happens on the supervisor
- * side; mock data lives in the page components and will be replaced
- * by API responses when the backend is attached.
+ * Data arrives from the API through the page components; this
+ * component only renders what it is given.
  */
 @Component({
   selector: 'app-management-view',
@@ -49,4 +65,5 @@ export interface ManagementPage {
 })
 export class ManagementView {
   @Input({ required: true }) page!: ManagementPage;
+  @Input() list: RegistryList | null = null;
 }

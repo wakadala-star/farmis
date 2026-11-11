@@ -6,10 +6,10 @@
 /* ---------------- Responsive grid ----------------
    Mobile-first. Cards are placed in DOM order on desktop;
    below 992px an `order` rule re-flows them like the
-   tablet/mobile inspo (quick actions & recent activity
-   are desktop-hidden).
+   tablet/mobile inspo. Quick actions & recent activity are
+   full-width rows on desktop (992px+).
    12-column grid at every size; stat cards span 6 (2×2)
-   on phones and 3 (1×4) from 768px up.               */
+   on phones and 3 per row (6 cards → 2 rows) from 768px up. */
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -67,6 +67,10 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
+
+    &.is-down {
+      color: #dc2626;
+    }
   }
 
   &__label {
@@ -113,6 +117,15 @@
     .stat__icon {
       background: #e6e0fa;
       color: $purple-600;
+    }
+  }
+
+  &--red {
+    background: #fdeeee;
+
+    .stat__icon {
+      background: #fbdcdc;
+      color: #dc2626;
     }
   }
 }
@@ -219,12 +232,8 @@
     display: inline-block;
   }
 
-  .is-crops {
+  .is-sales {
     background: #35c46a;
-  }
-
-  .is-livestock {
-    background: #4d9df3;
   }
 }
 
@@ -278,16 +287,9 @@
   &__bar {
     width: clamp(14px, 30%, 30px);
     border-radius: 7px 7px 0 0;
+    background: linear-gradient(180deg, #43d477, #22a351);
     transition: height 0.5s ease;
     min-height: 4px;
-
-    &--crops {
-      background: linear-gradient(180deg, #43d477, #22a351);
-    }
-
-    &--livestock {
-      background: linear-gradient(180deg, #61aaf7, #3b82f6);
-    }
   }
 
   &__label {
@@ -620,6 +622,11 @@
     background: #f1f3f5;
     color: $muted;
   }
+
+  &--overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
 }
 
 /* ---------------- Quick actions ---------------- */
@@ -633,14 +640,17 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 14px 12px;
   border: 1px solid $line;
   border-radius: 12px;
   background: #fbfcfb;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   color: $ink-2;
-  cursor: default;
+  text-align: left;
+  cursor: pointer;
   user-select: none;
   transition: border-color 0.12s ease, background 0.12s ease;
 
@@ -653,6 +663,16 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: $green-500;
+    background: #f6faf7;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
@@ -753,7 +773,7 @@
 
 @include from($bp-md) {
   .stat {
-    grid-column: span 3;
+    grid-column: span 4;
   }
 
   .widget--perf {
@@ -786,9 +806,15 @@
 }
 
 @include from($bp-lg) {
+  /* Quick actions + recent activity become full-width rows so the
+     four actions stay reachable on desktop. */
   .widget--quick,
   .widget--recent {
-    display: none;
+    grid-column: span 12;
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .widget--perf {
