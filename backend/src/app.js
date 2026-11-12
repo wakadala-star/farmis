@@ -15,6 +15,7 @@ const cropsRoutes = require('./routes/crops.routes');
 const livestockRoutes = require('./routes/livestock.routes');
 const customersRoutes = require('./routes/customers.routes');
 const expensesRoutes = require('./routes/expenses.routes');
+const inventoryRoutes = require('./routes/inventory.routes');
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/crops', cropsRoutes);
 app.use('/api/livestock', livestockRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/expenses', expensesRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Unknown routes → JSON 404 (not an HTML page).
 app.use((req, res) => {

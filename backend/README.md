@@ -78,6 +78,13 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/customers`    | owner/supervisor| Add a customer (name required; phone/email/address optional) |
 | PATCH  | `/api/customers/:id`| owner/supervisor| Edit a customer's name and contact details |
 | DELETE | `/api/customers/:id`| owner/supervisor| Remove a customer — **409** while they have sales (history keeps the name attached) |
+| GET    | `/api/inventory`     | owner/supervisor| Item list — optional filters `category`, `low` (at/below reorder level), `q` (name/code), `limit` (1–500, default 50) + `count` · supervisor: own department's categories only |
+| GET    | `/api/inventory/categories` | owner/supervisor| Categories, **read-only** (name, department, item count) — supervisor: own department |
+| POST   | `/api/inventory`     | owner/supervisor| Add an item (name, unit, category, opening qty ≥ 0, reorder level, unit cost, optional code — **409** on a duplicate code); supervisor: own department only |
+| PATCH  | `/api/inventory/:id` | owner/supervisor| Edit an item's details — quantity is **not** editable (stock moves through movements only); **403** across departments |
+| DELETE | `/api/inventory/:id` | owner/supervisor| Remove an item — **409** while sales or movements reference it (history outlives edits) |
+| GET    | `/api/inventory/movements` | owner/supervisor| Movement log, newest first — filters `item`, `type` (`stock_in`\|`stock_out`\|`adjustment`), `dateFrom`/`dateTo` (inclusive), `limit` + `count`; mixes manual rows with sale `stock_out`s |
+| POST   | `/api/inventory/movements` | owner/supervisor| Record a movement atomically (item row locked): in/out qty > 0, **stock_out ≤ on-hand → 409**, adjustment = signed delta that never takes stock below zero (**409**) |
 | GET    | `/api/crops`        | owner       | Crop registry, newest first |
 | POST   | `/api/crops`        | owner       | Add a crop (name, optional variety/area/planted date/notes) |
 | GET    | `/api/livestock`    | owner       | Livestock registry, newest first |
