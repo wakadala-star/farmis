@@ -50,6 +50,14 @@ export class OwnerLayout {
 
   readonly roleLabel = computed(() => ROLE_LABELS[this.auth.role() ?? 'owner']);
 
+  /** Human date for the topbar pill, e.g. 'Fri, Nov 13, 2026'. */
+  readonly todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   /** Active top-level path, kept in sync with the router. */
   private readonly path = signal('');
 
