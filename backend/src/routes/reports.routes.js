@@ -133,19 +133,22 @@ router.get('/department', requireAuth, requireRole('supervisor'), async (req, re
 });
 
 /**
- * GET /api/reports/operations — generated report history for the
- * department (newest first).
+ * GET /api/reports/operations — generated report history
+ * (Phase 3E: widened to the owner). Supervisor: own department's
+ * snapshots; owner: the farm-wide ones (department_id IS NULL) —
+ * department reports stay on their own screens.
  */
-router.get('/operations', requireAuth, requireRole('supervisor'), async (req, res, next) => {
+router.get('/operations', requireAuth, requireRole('supervisor', 'owner'), async (req, res, next) => {
   try {
-    if (!req.user.departmentId) return res.json({ ok: true, generated: [] });
+    const isOwner = req.user.role === 'owner';
+    if (!isOwner && !req.user.departmentId) return res.json({ ok: true, generated: [] });
     const { rows } = await query(
       `SELECT report_id, report_type, period, lines, generated_at
          FROM operations_reports
-        WHERE department_id = $1
+        WHERE ${isOwner ? 'department_id IS NULL' : 'department_id = $1'}
         ORDER BY generated_at DESC, report_id DESC
         LIMIT 50`,
-      [req.user.departmentId],
+      isOwner ? [] : [req.user.departmentId],
     );
     res.json({
       ok: true,
@@ -163,12 +166,24 @@ router.get('/operations', requireAuth, requireRole('supervisor'), async (req, re
   }
 });
 
+/** The four report types the screens offer — type decides the lines. */
+const REPORT_TYPES = [
+  'Daily operations summary',
+  'Task performance',
+  'Attendance hours',
+  'Inputs & expenses',
+];
+
 /**
- * POST /api/reports/operations — compute the eight report lines over
- * the department's data from periodStart, store the snapshot, return it.
+ * POST /api/reports/operations — compute the report lines over the
+ * scope's data from periodStart, store the snapshot, return it.
+ * Phase 3E: each of the four types computes its own lines (Daily
+ * operations keeps the full 8-line snapshot); the owner generates
+ * farm-wide reports (department_id NULL), supervisors their own
+ * department's.
  * Body: { type, period, periodStart: 'YYYY-MM-DD' }.
  */
-router.post('/operations', requireAuth, requireRole('supervisor'), async (req, res, next) => {
+router.post('/operations', requireAuth, requireRole('supervisor', 'owner'), async (req, res, next) => {
   try {
     const body = req.body ?? {};
     const type = String(body.type ?? '').trim();
@@ -176,53 +191,89 @@ router.post('/operations', requireAuth, requireRole('supervisor'), async (req, r
     const periodStart = body.periodStart;
 
     const errors = [];
-    if (!type || type.length > 60) errors.push('Choose a report type.');
+    if (!REPORT_TYPES.includes(type)) errors.push('Choose a report type.');
     if (!period || period.length > 60) errors.push('Choose a period.');
     if (!isIsoDate(periodStart)) errors.push('A valid period start is required.');
     if (errors.length) return res.status(400).json({ ok: false, message: errors.join(' ') });
 
-    if (!req.user.departmentId) {
+    const isOwner = req.user.role === 'owner';
+    if (!isOwner && !req.user.departmentId) {
       return res.status(403).json({ ok: false, message: 'No department is assigned to your account.' });
     }
-    const dept = req.user.departmentId;
+    const dept = isOwner ? null : req.user.departmentId;
 
-    const [team, att, taskCounts, entriesCount, reportsCount, pendingValue] = await Promise.all([
+    // Scope fragments: supervisor = own department ($1), owner = none.
+    const pDept = dept == null ? [] : [dept];
+    const pBoth = [...pDept, periodStart];
+    const deptAt = (col) => (dept == null ? '' : ` AND ${col} = $1`);
+    const dateAt = (col, params) => ` AND ${col} >= $${params.length}::date`;
+
+    const [
+      team,
+      att,
+      taskCounts,
+      entriesCount,
+      reportsCount,
+      pendingValue,
+      expenses,
+      stock,
+    ] = await Promise.all([
       query(
         `SELECT count(*)::int AS n
            FROM users u JOIN roles r ON r.role_id = u.role_id
-          WHERE u.department_id = $1 AND r.role_name = 'worker'
-            AND u.employment_status = 'active'`,
-        [dept],
+          WHERE r.role_name = 'worker' AND u.employment_status = 'active'
+            ${deptAt('u.department_id')}`,
+        pDept,
       ),
       query(
         `SELECT a.user_id, a.check_in, a.check_out, a.approval_status
            FROM attendance a
            JOIN users u ON u.user_id = a.user_id
-          WHERE u.department_id = $1 AND a.attendance_date >= $2::date`,
-        [dept, periodStart],
+          WHERE 1 = 1${dateAt('a.attendance_date', pBoth)}${deptAt('u.department_id')}`,
+        pBoth,
       ),
       query(
         `SELECT count(*) FILTER (WHERE task_status = 'completed')::int AS done,
                 count(*) FILTER (WHERE task_status IN ('pending', 'in_progress'))::int AS open
-           FROM tasks WHERE department_id = $1`,
-        [dept],
+           FROM tasks${dept == null ? '' : ' WHERE department_id = $1'}`,
+        pDept,
       ),
       query(
-        'SELECT count(*)::int AS n FROM field_entries WHERE department_id = $1 AND entry_date >= $2::date',
-        [dept, periodStart],
+        `SELECT count(*)::int AS n FROM field_entries
+          WHERE 1 = 1${dateAt('entry_date', pBoth)}${deptAt('department_id')}`,
+        pBoth,
       ),
       query(
-        'SELECT count(*)::int AS n FROM daily_reports WHERE department_id = $1 AND report_date >= $2::date',
-        [dept, periodStart],
+        `SELECT count(*)::int AS n FROM daily_reports
+          WHERE 1 = 1${dateAt('report_date', pBoth)}${deptAt('department_id')}`,
+        pBoth,
       ),
       query(
         `SELECT COALESCE(SUM(cr.amount), 0) AS total
            FROM credit_requests cr
            JOIN users u ON u.user_id = cr.user_id
-          WHERE cr.status = 'pending'
-            AND (cr.department_id = $1
-                 OR (cr.department_id IS NULL AND u.department_id = $1))`,
-        [dept],
+          WHERE cr.status = 'pending'${
+            dept == null
+              ? ''
+              : ' AND (cr.department_id = $1 OR (cr.department_id IS NULL AND u.department_id = $1))'
+          }`,
+        pDept,
+      ),
+      // Expenses are farm-wide (no department column) and owner-only
+      // data (the 3C ruling) — only the owner's report shows them.
+      query(
+        `SELECT COALESCE(SUM(amount), 0)::numeric AS total, count(*)::int AS n
+           FROM expenses
+          WHERE expense_date >= $1::date`,
+        [periodStart],
+      ),
+      query(
+        `SELECT COALESCE(SUM(i.quantity_on_hand * COALESCE(i.unit_cost, 0)), 0)::numeric AS value,
+                (count(*) FILTER (WHERE i.quantity_on_hand <= i.reorder_level))::int AS low
+           FROM inventory_items i
+           JOIN inventory_categories c ON c.category_id = i.category_id
+          ${dept == null ? '' : 'WHERE c.department_id = $1'}`,
+        pDept,
       ),
     ]);
 
@@ -231,24 +282,66 @@ router.post('/operations', requireAuth, requireRole('supervisor'), async (req, r
         .filter((row) => row.approval_status !== 'rejected')
         .map((row) => String(row.user_id)),
     ).size;
-    const worked = att.rows
-      .filter(
-        (row) =>
-          row.check_out &&
-          (row.approval_status === 'approved' || row.approval_status === 'pending'),
-      )
-      .reduce((sum, row) => sum + (timeMs(row.check_out) - timeMs(row.check_in)) / 1000, 0);
+    // Worked time by approval state (rejected rows excluded, like the
+    // dashboard's attendance hours) — approved + pending is the total.
+    const secondsFor = (status) =>
+      att.rows
+        .filter((row) => row.check_out && row.approval_status === status)
+        .reduce((sum, row) => sum + (timeMs(row.check_out) - timeMs(row.check_in)) / 1000, 0);
+    const workedApproved = secondsFor('approved');
+    const workedPending = secondsFor('pending');
+    const worked = workedApproved + workedPending;
 
-    const lines = [
-      { label: 'Workers on the team', value: String(team.rows[0].n) },
-      { label: 'Workers present', value: String(present) },
-      { label: 'Tasks completed', value: String(taskCounts.rows[0].done) },
-      { label: 'Tasks still open', value: String(taskCounts.rows[0].open) },
-      { label: 'Data entries logged', value: String(entriesCount.rows[0].n) },
-      { label: 'Daily reports filed', value: String(reportsCount.rows[0].n) },
-      { label: 'Attendance hours (approved & pending)', value: fmtDuration(worked) },
-      { label: 'Pending transaction value', value: fmtMoney(Number(pendingValue.rows[0].total)) },
-    ];
+    const done = taskCounts.rows[0].done;
+    const open = taskCounts.rows[0].open;
+    const taskTotal = done + open;
+
+    let lines;
+    if (type === 'Task performance') {
+      lines = [
+        { label: 'Tasks completed', value: String(done) },
+        { label: 'Tasks still open', value: String(open) },
+        {
+          label: 'Completion rate',
+          value: taskTotal === 0 ? '—' : `${Math.round((done / taskTotal) * 100)}%`,
+        },
+        { label: 'Data entries logged', value: String(entriesCount.rows[0].n) },
+        { label: 'Daily reports filed', value: String(reportsCount.rows[0].n) },
+      ];
+    } else if (type === 'Attendance hours') {
+      lines = [
+        { label: 'Workers present', value: String(present) },
+        { label: 'Attendance hours (approved & pending)', value: fmtDuration(worked) },
+        { label: 'Approved hours', value: fmtDuration(workedApproved) },
+        { label: 'Awaiting approval hours', value: fmtDuration(workedPending) },
+      ];
+    } else if (type === 'Inputs & expenses') {
+      // Expenses are owner-only data (the 3C ruling): the supervisor's
+      // version carries dept-scoped input lines only.
+      lines = [
+        ...(isOwner
+          ? [
+              { label: 'Expenses (period)', value: fmtMoney(Number(expenses.rows[0].total)) },
+              { label: 'Expense entries', value: String(expenses.rows[0].n) },
+            ]
+          : []),
+        { label: 'Pending transaction value', value: fmtMoney(Number(pendingValue.rows[0].total)) },
+        { label: 'Stock on hand value', value: fmtMoney(Number(stock.rows[0].value)) },
+        { label: 'Low-stock items', value: String(stock.rows[0].low) },
+      ];
+    } else {
+      // Daily operations summary — the full 8-line snapshot (unchanged).
+      lines = [
+        { label: 'Workers on the team', value: String(team.rows[0].n) },
+        { label: 'Workers present', value: String(present) },
+        { label: 'Tasks completed', value: String(done) },
+        { label: 'Tasks still open', value: String(open) },
+        { label: 'Data entries logged', value: String(entriesCount.rows[0].n) },
+        { label: 'Daily reports filed', value: String(reportsCount.rows[0].n) },
+        { label: 'Attendance hours (approved & pending)', value: fmtDuration(worked) },
+        { label: 'Pending transaction value', value: fmtMoney(Number(pendingValue.rows[0].total)) },
+      ];
+    }
 
     const { rows } = await query(
       `INSERT INTO operations_reports (department_id, report_type, period, lines, generated_by)

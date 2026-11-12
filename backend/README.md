@@ -68,8 +68,8 @@ Requires the PostgreSQL service running locally with the credentials in
 | GET    | `/api/reports/mine`| required        | Own daily reports, newest first            |
 | POST   | `/api/reports`     | worker          | File a daily report (free-text task, 1–24 h) |
 | GET    | `/api/reports/department` | supervisor | Daily reports filed by the team, newest first |
-| GET    | `/api/reports/operations` | supervisor | Generated operations-report history (8 label/value lines) |
-| POST   | `/api/reports/operations` | supervisor | Compute + store the report over department data from `periodStart` |
+| GET    | `/api/reports/operations` | owner/supervisor | Generated report history — supervisor: own department's snapshots, owner: the farm-wide ones (`department_id IS NULL`) |
+| POST   | `/api/reports/operations` | owner/supervisor | Compute + store one of the 4 types (`Daily operations summary` = full 8-line snapshot, `Task performance`, `Attendance hours`, `Inputs & expenses` — owner shows farm-wide lines incl. expenses, supervisor dept-scoped lines) from `periodStart` |
 | GET    | `/api/owner/summary` | owner     | Dashboard aggregate — stat cards, 6-month sales series, recent sales, low-stock rows, pending approvals, tasks due soon, recent activity feed |
 | GET    | `/api/owner/finance` | owner     | Month summary (`?month=YYYY-MM`, default current) — sales/expenses/net this month vs last, expense breakdown by category |
 | GET    | `/api/owner/department/:code` | owner | One management page (`crops`\|`livestock`) — meta numbers, dept-scoped low stock, tasks due soon, latest entries |
