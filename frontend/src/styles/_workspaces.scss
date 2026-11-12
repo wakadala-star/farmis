@@ -339,6 +339,224 @@
   }
 }
 
+/* ---------------- Sales & Customers screen (Phase 3A) ---------------- */
+/* Tab switcher above the screen's two panels. */
+.ws-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border: 1px solid $line;
+    border-radius: 10px;
+    background: #fff;
+    color: $muted;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      border-color 0.12s ease,
+      background 0.12s ease,
+      color 0.12s ease;
+
+    i {
+      font-size: 13px;
+    }
+
+    &:hover:not(.is-active) {
+      border-color: $green-500;
+      color: $green-700;
+    }
+
+    &.is-active {
+      background: $green-600;
+      border-color: $green-600;
+      color: #fff;
+
+      .badge-count {
+        background: rgba(255, 255, 255, 0.22);
+        color: #fff;
+      }
+    }
+  }
+}
+
+/* Date / status / method filters above the sales list. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid $line-soft;
+  border-radius: $radius;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 150px;
+
+    label {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: $muted-2;
+    }
+  }
+}
+
+/* Sales rows: amount, method and the expand chevron. */
+.list-row {
+  &__money {
+    font-size: 13px;
+    font-weight: 800;
+    color: $ink;
+    white-space: nowrap;
+  }
+
+  &__chev {
+    font-size: 11px;
+    color: $muted-2;
+    transition: transform 0.15s ease;
+  }
+
+  &.is-open {
+    background: #f6faf7;
+
+    .list-row__chev {
+      transform: rotate(180deg);
+    }
+  }
+
+  &.is-editing {
+    background: #f6faf7;
+    border-radius: 10px;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+}
+
+/* Expanded sale: header, line-item table, stock movements, notes. */
+.sale-detail {
+  margin: -2px 0 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid $line-soft;
+  border-radius: 12px;
+  font-size: 12.5px;
+  color: $muted;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-bottom: 10px;
+    font-size: 12px;
+
+    i {
+      color: $green-600;
+      margin-right: 5px;
+    }
+
+    strong {
+      color: $ink;
+    }
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    min-width: 380px;
+    border-collapse: collapse;
+    font-size: 12.5px;
+
+    th,
+    td {
+      padding: 7px 8px;
+      border-bottom: 1px solid $line-soft;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    thead th {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: $muted-2;
+    }
+
+    td:not(:first-child),
+    th:not(:first-child) {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    tfoot th {
+      border-bottom: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: $ink;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+  }
+
+  &__sub {
+    margin: 12px 0 6px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: $muted-2;
+
+    i {
+      margin-right: 6px;
+      color: $green-600;
+    }
+  }
+
+  &__stock {
+    margin: 0;
+    padding-left: 18px;
+
+    li {
+      margin: 3px 0;
+    }
+  }
+
+  &__notes {
+    margin: 10px 0 0;
+    color: $muted;
+
+    i {
+      margin-right: 6px;
+      color: $green-600;
+    }
+  }
+}
+
+/* Button row at the bottom of an inline form (customers, …). */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 /* ---------------- Report preview ---------------- */
 .report-card {
   border: 1px solid $line;

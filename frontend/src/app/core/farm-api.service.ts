@@ -223,6 +223,70 @@ export interface SaleLineInput {
   unitPrice: number;
 }
 
+/* ---------------- Phase 3A: Sales & Customers screen ---------------- */
+
+/** One row of GET /api/sales (list, newest first). */
+export interface SalesListRow {
+  id: string;
+  date: string; // YYYY-MM-DD
+  receipt: string;
+  customer: string;
+  item: string;
+  amount: number;
+  method: string; // cash | mobile_money | bank_transfer | other
+  status: string; // paid | pending | partial
+}
+
+/** Filter for GET /api/sales (all optional, inclusive calendar days). */
+export interface SalesFilter {
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD
+  status?: string;
+  method?: string;
+}
+
+/** GET /api/sales/:id — header, line items and the stock impact. */
+export interface SaleDetail {
+  id: string;
+  receipt: string;
+  date: string;
+  customer: string;
+  customerId: string | null;
+  customerPhone: string;
+  seller: string;
+  method: string;
+  status: string;
+  notes: string;
+  total: number;
+  items: {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    linked: boolean;
+    item: string | null;
+    unit: string;
+  }[];
+  stockMovements: {
+    item: string;
+    quantity: number;
+    unit: string;
+    unitCost: number;
+    date: string;
+  }[];
+}
+
+/** One row of GET /api/customers (saleCount = sales on record). */
+export interface CustomerRec {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  createdAt: string; // YYYY-MM-DD
+  saleCount: number;
+}
+
 /** A row of GET /api/users as the owner's staff list shows it. */
 export type StaffRec = ApiUser;
 
@@ -668,6 +732,91 @@ export class FarmApiService {
     } catch (err) {
       return { ok: false, message: apiMessage(err) };
     }
+  }
+
+  /* ---------------- Phase 3A: Sales & Customers ---------------- */
+
+  /**
+   * Filtered sales list (GET /sales, capped at 200 rows server-side).
+   * The dashboard's Recent Sales keeps coming from the summary bundle —
+   * this one is the Sales screen's own fetch.
+   */
+  async listSales(filter: SalesFilter): Promise<{
+    ok: boolean;
+    message: string;
+    count: number; // full match count, beyond the row cap
+    sales: SalesListRow[];
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filter.dateFrom) params.set('dateFrom', filter.dateFrom);
+      if (filter.dateTo) params.set('dateTo', filter.dateTo);
+      if (filter.status) params.set('status', filter.status);
+      if (filter.method) params.set('method', filter.method);
+      params.set('limit', '200');
+      const res = await this.get<{ count: number; sales: SalesListRow[] }>(
+        `/sales?${params.toString()}`,
+      );
+      return { ok: true, message: '', count: res.count, sales: res.sales };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), count: 0, sales: [] };
+    }
+  }
+
+  /** Sale detail for the expandable row (GET /sales/:id). */
+  async fetchSaleDetail(id: string): Promise<{
+    ok: boolean;
+    message: string;
+    sale: SaleDetail | null;
+  }> {
+    try {
+      const res = await this.get<{ sale: SaleDetail }>(`/sales/${id}`);
+      return { ok: true, message: '', sale: res.sale };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), sale: null };
+    }
+  }
+
+  /** Customers with their sale counts (GET /customers). */
+  async listCustomers(): Promise<{
+    ok: boolean;
+    message: string;
+    customers: CustomerRec[];
+  }> {
+    try {
+      const res = await this.get<{ customers: CustomerRec[] }>('/customers');
+      return { ok: true, message: '', customers: res.customers };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), customers: [] };
+    }
+  }
+
+  /** Adds a customer up front (POST /customers). */
+  createCustomer(input: {
+    name: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/customers', input);
+  }
+
+  /** Edits a customer's name and contact details (PATCH /customers/:id). */
+  updateCustomer(
+    id: string,
+    input: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+    },
+  ): Promise<ActionResult> {
+    return this.send('PATCH', `/customers/${id}`, input);
+  }
+
+  /** Removes a customer — 409 while sales reference them (DELETE). */
+  removeCustomer(id: string): Promise<ActionResult> {
+    return this.send('DELETE', `/customers/${id}`, undefined);
   }
 
   /* ---------------- internals ---------------- */

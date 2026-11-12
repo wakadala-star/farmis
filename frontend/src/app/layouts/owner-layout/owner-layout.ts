@@ -75,6 +75,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Recruit, review and manage your farm team.`,
           mob: 'Team & recruitment',
         };
+      case '/sales':
+        return {
+          title: 'Sales & Customers',
+          sub: `Welcome back, ${name}! Review every sale and manage the customer book.`,
+          mob: 'Sales history & customers',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -91,7 +97,7 @@ export class OwnerLayout {
     { label: 'Inventory & Stores', icon: 'fa-solid fa-warehouse' },
     { label: 'Workers & HR', icon: 'fa-solid fa-users', link: '/workers' },
     { label: 'Procurement', icon: 'fa-solid fa-basket-shopping' },
-    { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping' },
+    { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/sales' },
     { label: 'Finance', icon: 'fa-solid fa-wallet' },
     { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check' },
     { label: 'Reports', icon: 'fa-solid fa-chart-column' },

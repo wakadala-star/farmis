@@ -1,0 +1,489 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      The full sales history with filters and per-sale stock impact, plus the
+      customer book. Record new sales from the dashboard’s
+      <strong>Quick Actions</strong> — a customer can’t be removed while sales
+      still reference them.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ============ Tabs ============ -->
+  <div class="ws-tabs" role="tablist" aria-label="Sales and customers">
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'sales'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'sales'"
+      (click)="switchTab('sales')"
+    >
+      <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+      <span>Sales</span>
+      <span class="badge-count">{{ salesCount() }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'customers'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'customers'"
+      (click)="switchTab('customers')"
+    >
+      <i class="fa-solid fa-address-book" aria-hidden="true"></i>
+      <span>Customers</span>
+      <span class="badge-count">{{ customers().length }}</span>
+    </button>
+  </div>
+
+  @if (tab() === 'sales') {
+    <!-- ============ Filters ============ -->
+    <div class="filter-bar" role="group" aria-label="Filter sales">
+      <div class="filter-bar__field">
+        <label for="sale-from">From</label>
+        <input
+          id="sale-from"
+          type="date"
+          class="input"
+          [value]="dateFrom()"
+          (change)="onDateFrom($event)"
+        />
+      </div>
+      <div class="filter-bar__field">
+        <label for="sale-to">To</label>
+        <input
+          id="sale-to"
+          type="date"
+          class="input"
+          [value]="dateTo()"
+          (change)="onDateTo($event)"
+        />
+      </div>
+      <div class="filter-bar__field">
+        <label for="sale-status">Payment</label>
+        <select id="sale-status" class="select" [value]="status()" (change)="onStatus($event)">
+          <option value="">All statuses</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+      <div class="filter-bar__field">
+        <label for="sale-method">Method</label>
+        <select id="sale-method" class="select" [value]="method()" (change)="onMethod($event)">
+          <option value="">All methods</option>
+          <option value="cash">Cash</option>
+          <option value="mobile_money">Mobile Money</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      @if (dateFrom() || dateTo() || status() || method()) {
+        <button type="button" class="btn-mini" (click)="resetFilters()">
+          <i class="fa-solid fa-rotate-left"></i>
+          Reset
+        </button>
+      }
+    </div>
+
+    <!-- ============ Sales list ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-receipt widget__icon"></i>
+        <h2 class="widget__title">Sales</h2>
+        <div class="widget__action">
+          <span class="badge-count">{{ salesCount() }}</span>
+        </div>
+      </header>
+
+      <div class="widget__body">
+        @if (salesLoading()) {
+          <p class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading sales…
+          </p>
+        } @else if (salesError()) {
+          <div class="form-alert form-alert--error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ salesError() }}</span>
+          </div>
+          <button type="button" class="btn-mini" (click)="retrySales()">
+            <i class="fa-solid fa-rotate-right"></i>
+            Try again
+          </button>
+        } @else {
+          <p class="ws__count">
+            Showing {{ sales().length }} of {{ salesCount() }} sales
+            @if (dateFrom() || dateTo() || status() || method()) {
+              (filtered)
+            }
+          </p>
+
+          @for (sale of sales(); track sale.id) {
+            <div
+              class="list-row list-row--clickable"
+              [class.is-open]="expandedId() === sale.id"
+              role="button"
+              tabindex="0"
+              (click)="toggleDetail(sale)"
+              (keydown.enter)="toggleDetail(sale)"
+              (keydown.space)="$event.preventDefault(); toggleDetail(sale)"
+            >
+              <span class="list-row__icon">
+                <i class="fa-solid fa-receipt"></i>
+              </span>
+              <div class="list-row__main">
+                <p class="list-row__title-row">
+                  <strong class="list-row__title">{{ sale.customer }}</strong>
+                  <span [class]="statusChip(sale.status)">
+                    {{ statusLabel(sale.status) }}
+                  </span>
+                </p>
+                <p class="list-row__sub">
+                  {{ sale.receipt }} · {{ sale.item }} · {{ fmtDay(sale.date) }}
+                </p>
+              </div>
+              <div class="list-row__side">
+                <span class="list-row__money">{{ fmtMoney(sale.amount) }}</span>
+                <span class="chip chip--neutral">{{ methodLabel(sale.method) }}</span>
+                <i class="fa-solid fa-chevron-down list-row__chev" aria-hidden="true"></i>
+              </div>
+            </div>
+
+            @if (expandedId() === sale.id) {
+              <div class="sale-detail">
+                @if (detailLoading()) {
+                  <p class="empty-state">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    Loading sale…
+                  </p>
+                } @else if (detailError()) {
+                  <div class="form-alert form-alert--error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>{{ detailError() }}</span>
+                  </div>
+                  <button type="button" class="btn-mini" (click)="retryDetail()">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    Try again
+                  </button>
+                } @else if (detail(); as d) {
+                  <div class="sale-detail__head">
+                    <span>
+                      <i class="fa-solid fa-user"></i>
+                      Sold by <strong>{{ d.seller }}</strong>
+                    </span>
+                    @if (d.customerPhone) {
+                      <span>
+                        <i class="fa-solid fa-phone"></i>
+                        {{ d.customerPhone }}
+                      </span>
+                    }
+                    <span>
+                      <i class="fa-regular fa-calendar"></i>
+                      {{ fmtDay(d.date) }}
+                    </span>
+                    <span>
+                      <i class="fa-solid fa-hashtag"></i>
+                      {{ d.receipt }}
+                    </span>
+                  </div>
+
+                  <div class="sale-detail__table-wrap">
+                    <table class="sale-detail__table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Qty</th>
+                          <th>Unit price</th>
+                          <th>Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (line of d.items; track $index) {
+                          <tr>
+                            <td>
+                              {{ line.description }}
+                              @if (line.linked) {
+                                <span class="chip chip--blue">stock</span>
+                              }
+                            </td>
+                            <td>
+                              {{ line.quantity }}
+                              @if (line.unit) {
+                                {{ line.unit }}
+                              }
+                            </td>
+                            <td>{{ fmtMoney(line.unitPrice) }}</td>
+                            <td>{{ fmtMoney(line.subtotal) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th colspan="3">Total</th>
+                          <th>{{ fmtMoney(d.total) }}</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  @if (d.stockMovements.length) {
+                    <p class="sale-detail__sub">
+                      <i class="fa-solid fa-warehouse" aria-hidden="true"></i>
+                      Stock movements from this sale
+                    </p>
+                    <ul class="sale-detail__stock">
+                      @for (m of d.stockMovements; track $index) {
+                        <li>
+                          −{{ m.quantity }} {{ m.unit }} {{ m.item }}
+                          · {{ fmtMoney(m.unitCost) }}/unit · {{ fmtDay(m.date) }}
+                        </li>
+                      }
+                    </ul>
+                  }
+
+                  @if (d.notes) {
+                    <p class="sale-detail__notes">
+                      <i class="fa-regular fa-note-sticky" aria-hidden="true"></i>
+                      {{ d.notes }}
+                    </p>
+                  }
+                }
+              </div>
+            }
+          } @empty {
+            <p class="empty-state">
+              <i class="fa-solid fa-receipt"></i>
+              @if (dateFrom() || dateTo() || status() || method()) {
+                No sales match these filters — adjust or reset them.
+              } @else {
+                No sales recorded yet — record one from the dashboard.
+              }
+            </p>
+          }
+        }
+      </div>
+    </article>
+  } @else {
+    <!-- ============ Customers ============ -->
+    <div class="ws__grid">
+      <!-- ============ Add / edit customer ============ -->
+      <article class="widget">
+        <header class="widget__head">
+          <i
+            [class]="editingId() ? 'fa-solid fa-pen widget__icon' : 'fa-solid fa-user-plus widget__icon'"
+          ></i>
+          <h2 class="widget__title">
+            {{ editingId() ? 'Edit Customer' : 'Add a Customer' }}
+          </h2>
+        </header>
+
+        <div class="widget__body">
+          <form [formGroup]="form" (ngSubmit)="saveCustomer()">
+            <div class="field">
+              <label class="field__label" for="cust-name">Customer name</label>
+              <div class="field__box">
+                <i class="fa-solid fa-store field__icon"></i>
+                <input
+                  id="cust-name"
+                  type="text"
+                  class="input"
+                  [class.is-invalid]="invalid('name')"
+                  maxlength="150"
+                  placeholder="e.g. Namulema Traders"
+                  formControlName="name"
+                />
+              </div>
+              @if (invalid('name')) {
+                <span class="field__error">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                  Enter the customer’s name.
+                </span>
+              }
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field__label" for="cust-phone">Phone</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-phone field__icon"></i>
+                  <input
+                    id="cust-phone"
+                    type="tel"
+                    class="input"
+                    maxlength="25"
+                    placeholder="Optional"
+                    formControlName="phone"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="cust-email">Email</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-envelope field__icon"></i>
+                  <input
+                    id="cust-email"
+                    type="email"
+                    class="input"
+                    maxlength="120"
+                    placeholder="Optional"
+                    formControlName="email"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="cust-address">Address</label>
+              <div class="field__box">
+                <i class="fa-solid fa-location-dot field__icon"></i>
+                <input
+                  id="cust-address"
+                  type="text"
+                  class="input"
+                  maxlength="255"
+                  placeholder="Optional — where they buy from"
+                  formControlName="address"
+                />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button
+                class="btn btn--primary"
+                type="submit"
+                [disabled]="submitting()"
+                [attr.aria-busy]="submitting()"
+              >
+                <span>{{ editingId() ? 'Save Changes' : 'Add Customer' }}</span>
+                @if (submitting()) {
+                  <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                } @else if (editingId()) {
+                  <i class="fa-solid fa-check"></i>
+                } @else {
+                  <i class="fa-solid fa-user-plus"></i>
+                }
+              </button>
+              @if (editingId()) {
+                <button class="btn btn--ghost" type="button" (click)="cancelEdit()">
+                  <span>Cancel</span>
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              }
+            </div>
+          </form>
+        </div>
+      </article>
+
+      <!-- ============ Customer list ============ -->
+      <article class="widget">
+        <header class="widget__head">
+          <i class="fa-solid fa-address-book widget__icon"></i>
+          <h2 class="widget__title">Customers</h2>
+          <div class="widget__action">
+            <span class="badge-count">{{ customers().length }}</span>
+          </div>
+        </header>
+
+        <div class="widget__body">
+          @if (customersLoading()) {
+            <p class="empty-state">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              Loading customers…
+            </p>
+          } @else if (customersError()) {
+            <div class="form-alert form-alert--error">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span>{{ customersError() }}</span>
+            </div>
+            <button type="button" class="btn-mini" (click)="retryCustomers()">
+              <i class="fa-solid fa-rotate-right"></i>
+              Try again
+            </button>
+          } @else {
+            @for (customer of customers(); track customer.id) {
+              <div
+                class="list-row list-row--stacked"
+                [class.is-editing]="editingId() === customer.id"
+              >
+                <span class="list-row__avatar">
+                  {{ customer.name.charAt(0) }}
+                </span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">{{ customer.name }}</strong>
+                    @if (customer.saleCount > 0) {
+                      <span class="chip chip--blue">
+                        {{ customer.saleCount }} sale(s)
+                      </span>
+                    } @else {
+                      <span class="chip chip--neutral">No sales</span>
+                    }
+                  </p>
+                  <p class="list-row__sub">
+                    @if (customer.phone) {
+                      {{ customer.phone }}
+                    } @else {
+                      No phone
+                    }
+                    @if (customer.email) {
+                      · {{ customer.email }}
+                    }
+                  </p>
+                  @if (customer.address) {
+                    <p class="list-row__meta">
+                      <i class="fa-solid fa-location-dot"></i>
+                      {{ customer.address }}
+                    </p>
+                  }
+                </div>
+                <div class="list-row__side">
+                  <button
+                    type="button"
+                    class="btn-mini"
+                    title="Edit customer"
+                    (click)="editCustomer(customer)"
+                  >
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-mini btn-mini--no"
+                    title="Remove customer"
+                    [disabled]="removingId() === customer.id"
+                    (click)="removeCustomer(customer)"
+                  >
+                    @if (removingId() === customer.id) {
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                    } @else {
+                      <i class="fa-solid fa-trash"></i>
+                    }
+                  </button>
+                </div>
+              </div>
+            } @empty {
+              <p class="empty-state">
+                <i class="fa-solid fa-address-book"></i>
+                No customers on file yet — add the first one with the form.
+              </p>
+            }
+          }
+        </div>
+      </article>
+    </div>
+  }
+</section>

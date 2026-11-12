@@ -75,6 +75,13 @@ export const routes: Routes = [
             (m) => m.OwnerWorkers,
           ),
       },
+      {
+        path: 'sales',
+        loadComponent: () =>
+          import('./features/sales/owner-sales/owner-sales').then(
+            (m) => m.OwnerSales,
+          ),
+      },
     ],
   },
 
