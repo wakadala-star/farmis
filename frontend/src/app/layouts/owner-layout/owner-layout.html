@@ -171,10 +171,16 @@
       <i class="fa-solid fa-warehouse"></i>
       <span>Inventory</span>
     </a>
-    <span class="bottom-nav__item" title="Coming soon">
+    <a
+      class="bottom-nav__item"
+      routerLink="/reports"
+      routerLinkActive="bottom-nav__item--active"
+      title="Reports"
+      (click)="closeDrawer()"
+    >
       <i class="fa-solid fa-chart-column"></i>
       <span>Reports</span>
-    </span>
+    </a>
     <span class="bottom-nav__item" title="Coming soon">
       <i class="fa-solid fa-ellipsis"></i>
       <span>More</span>

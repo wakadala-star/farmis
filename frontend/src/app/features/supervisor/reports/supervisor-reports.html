@@ -98,8 +98,16 @@
               }
             </dl>
             <p class="report-card__foot">
-              <i class="fa-solid fa-circle-info"></i>
-              Export arrives with the backend integration.
+              <button
+                type="button"
+                class="btn-mini"
+                (click)="export(report)"
+                title="Download this report as CSV"
+              >
+                <i class="fa-solid fa-download"></i>
+                Export CSV
+              </button>
+              <span>Downloads these lines as a .csv file.</span>
             </p>
           </div>
         } @else {
@@ -156,6 +164,15 @@
             </div>
             <div class="list-row__side">
               <span class="chip chip--neutral">View</span>
+              <button
+                type="button"
+                class="btn-mini"
+                title="Export CSV"
+                (click)="$event.stopPropagation(); export(report)"
+              >
+                <i class="fa-solid fa-download"></i>
+                CSV
+              </button>
             </div>
           </div>
         } @empty {

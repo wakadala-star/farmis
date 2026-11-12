@@ -99,6 +99,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Every field entry across the farm, filterable.`,
           mob: 'Field entries & activity',
         };
+      case '/reports':
+        return {
+          title: 'Reports',
+          sub: `Welcome back, ${name}! Generate farm-wide reports and export them as CSV.`,
+          mob: 'Reports & CSV export',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -118,7 +124,7 @@ export class OwnerLayout {
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/sales' },
     { label: 'Finance', icon: 'fa-solid fa-wallet', link: '/finance' },
     { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check', link: '/activities' },
-    { label: 'Reports', icon: 'fa-solid fa-chart-column' },
+    { label: 'Reports', icon: 'fa-solid fa-chart-column', link: '/reports' },
     { label: 'Settings', icon: 'fa-solid fa-gear' },
   ];
 

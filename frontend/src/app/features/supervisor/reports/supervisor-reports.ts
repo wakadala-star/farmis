@@ -12,19 +12,11 @@ import {
   fmtClock,
   fmtDay,
 } from '../../../core/farm-data.service';
-
-const REPORT_TYPES = [
-  'Daily operations summary',
-  'Task performance',
-  'Attendance hours',
-  'Inputs & expenses',
-];
-
-const PERIODS: { value: string; label: string; days: number }[] = [
-  { value: 'today', label: 'Today', days: 0 },
-  { value: '7d', label: 'Last 7 days', days: 6 },
-  { value: 'month', label: 'This month', days: 29 },
-];
+import {
+  PERIODS,
+  REPORT_TYPES,
+  downloadReportCsv,
+} from '../../../shared/reports/reports';
 
 /**
  * Supervisor reports — generate a report over the department's daily
@@ -118,5 +110,10 @@ export class SupervisorReports {
 
   view(report: GeneratedReport): void {
     this.selected.set(report);
+  }
+
+  /** Downloads the given report as a CSV file (client-side). */
+  export(report: GeneratedReport): void {
+    downloadReportCsv(report);
   }
 }

@@ -103,6 +103,13 @@ export const routes: Routes = [
             './features/activities/activities-screen/activities-screen'
           ).then((m) => m.ActivitiesScreen),
       },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/reports-screen/reports-screen').then(
+            (m) => m.ReportsScreen,
+          ),
+      },
     ],
   },
 
