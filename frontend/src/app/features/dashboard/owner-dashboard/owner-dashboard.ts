@@ -6,7 +6,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActionResult, FarmApiService, SaleOptions } from '../../../core/farm-api.service';
+import { ActionResult, FarmApiService } from '../../../core/farm-api.service';
 import { ago, fmtCompact } from '../../../core/format';
 import { dayKey, dayOffset, fmtDay, fmtMoney } from '../../../core/farm-data.service';
 import { DEPT_LABELS } from '../../../core/models';
@@ -15,16 +15,13 @@ import {
   PerformanceChart,
   monthLabel,
 } from '../../../shared/performance-chart/performance-chart';
+import { RecordSale } from '../../../shared/record-sale/record-sale';
 
-type ModalKind = 'crop' | 'animal' | 'sale' | 'expense';
+/** 'sale' is not part of the quick-action modal system — it opens the
+ *  shared Record Sale component (dashboard + Sales screen alike). */
+type ModalKind = 'crop' | 'animal' | 'expense';
+type QuickKind = ModalKind | 'sale';
 type FeedKind = 'entry' | 'expense' | 'sale' | 'crop' | 'animal';
-
-interface SaleLineForm {
-  itemId: string; // '' = free-text line (never touches stock)
-  description: string;
-  quantity: string;
-  unitPrice: string;
-}
 
 const MONTHS_SHORT = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -51,11 +48,12 @@ const RECENT_TONES: Record<FeedKind, string> = {
  * Owner dashboard — the first screen of FARMIS, live against the
  * backend: six stat cards (registry totals, people, stock, sales),
  * the six-month sales chart, alerts, recent sales, upcoming tasks,
- * four working quick-action modals and the mixed activity feed.
+ * three working quick-action modals, the shared Record Sale modal
+ * and the mixed activity feed.
  */
 @Component({
   selector: 'app-owner-dashboard',
-  imports: [PerformanceChart, NgStyle, ReactiveFormsModule],
+  imports: [PerformanceChart, NgStyle, ReactiveFormsModule, RecordSale],
   templateUrl: './owner-dashboard.html',
 })
 export class OwnerDashboard {
@@ -82,20 +80,9 @@ export class OwnerDashboard {
   readonly modalError = signal('');
   readonly submitting = signal(false);
 
-  /* ---------------- record sale options ---------------- */
+  /* ---------------- record sale (shared modal) ---------------- */
 
-  readonly optionsState = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  readonly optionsError = signal('');
-  readonly saleOptions = signal<SaleOptions | null>(null);
-  readonly saleLines = signal<SaleLineForm[]>([
-    { itemId: '', description: '', quantity: '1', unitPrice: '' },
-  ]);
-  readonly saleTotal = computed(() =>
-    this.saleLines().reduce(
-      (sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0),
-      0,
-    ),
-  );
+  readonly saleOpen = signal(false);
 
   /* ---------------- forms ---------------- */
 
@@ -164,17 +151,6 @@ export class OwnerDashboard {
     }),
     date: new FormControl('', { nonNullable: true }),
     paymentMethod: new FormControl('cash', { nonNullable: true }),
-  });
-
-  readonly saleForm = new FormGroup({
-    customerId: new FormControl('', { nonNullable: true }), // '' | 'new' | id
-    customerName: new FormControl('', { nonNullable: true }),
-    paymentMethod: new FormControl('cash', { nonNullable: true }),
-    paymentStatus: new FormControl('paid', { nonNullable: true }),
-    notes: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.maxLength(500)],
-    }),
   });
 
   /* ---------------- derived dashboard data ---------------- */
@@ -311,7 +287,7 @@ export class OwnerDashboard {
     });
   });
 
-  readonly quickActions: { icon: string; label: string; kind: ModalKind }[] = [
+  readonly quickActions: { icon: string; label: string; kind: QuickKind }[] = [
     { icon: 'fa-solid fa-seedling', label: 'Add Crop', kind: 'crop' },
     { icon: 'fa-solid fa-cow', label: 'Add Animal', kind: 'animal' },
     { icon: 'fa-solid fa-cart-shopping', label: 'Record Sale', kind: 'sale' },
@@ -338,9 +314,13 @@ export class OwnerDashboard {
 
   /* ---------------- modals ---------------- */
 
-  openModal(kind: ModalKind): void {
+  openModal(kind: QuickKind): void {
     this.notice.set('');
     this.modalError.set('');
+    if (kind === 'sale') {
+      this.saleOpen.set(true);
+      return;
+    }
     if (kind === 'crop') {
       this.cropForm.reset({
         name: '',
@@ -366,16 +346,6 @@ export class OwnerDashboard {
         date: '',
         paymentMethod: 'cash',
       });
-    } else {
-      this.saleForm.reset({
-        customerId: '',
-        customerName: '',
-        paymentMethod: 'cash',
-        paymentStatus: 'paid',
-        notes: '',
-      });
-      this.saleLines.set([{ itemId: '', description: '', quantity: '1', unitPrice: '' }]);
-      void this.loadSaleOptions();
     }
     this.modal.set(kind);
   }
@@ -384,6 +354,18 @@ export class OwnerDashboard {
     if (this.submitting()) return;
     this.modal.set(null);
     this.modalError.set('');
+  }
+
+  closeSale(): void {
+    this.saleOpen.set(false);
+  }
+
+  /** The shared Record Sale modal succeeded → close it, confirm via the
+   *  top notice and refresh the dashboard numbers (owner-only summary). */
+  onSaleRecorded(message: string): void {
+    this.saleOpen.set(false);
+    this.notice.set(message);
+    void this.api.ensure('ownerSummary', true);
   }
 
   dismissNotice(): void {
@@ -395,9 +377,7 @@ export class OwnerDashboard {
       ? 'Add Crop'
       : kind === 'animal'
         ? 'Add Animal'
-        : kind === 'sale'
-          ? 'Record Sale'
-          : 'Add Expense';
+        : 'Add Expense';
   }
 
   modalIcon(kind: ModalKind): string {
@@ -405,9 +385,7 @@ export class OwnerDashboard {
       ? 'fa-solid fa-seedling'
       : kind === 'animal'
         ? 'fa-solid fa-cow'
-        : kind === 'sale'
-          ? 'fa-solid fa-cart-shopping'
-          : 'fa-solid fa-wallet';
+        : 'fa-solid fa-wallet';
   }
 
   @HostListener('document:keydown.escape')
@@ -498,47 +476,6 @@ export class OwnerDashboard {
         paymentMethod: v.paymentMethod,
       };
       run = () => this.api.addExpense(payload);
-    } else {
-      /* ---- Record Sale ---- */
-      const v = this.saleForm.getRawValue();
-      const lines = this.saleLines();
-      for (const [i, line] of lines.entries()) {
-        const qty = Number(line.quantity);
-        const price = Number(line.unitPrice);
-        if (!Number.isFinite(qty) || qty <= 0) {
-          this.modalError.set(`Line ${i + 1}: quantity must be greater than 0.`);
-          return;
-        }
-        if (!Number.isFinite(price) || price < 0) {
-          this.modalError.set(`Line ${i + 1}: price cannot be negative.`);
-          return;
-        }
-        if (!line.description.trim() && !line.itemId) {
-          this.modalError.set(
-            `Line ${i + 1}: enter an item description or pick an inventory item.`,
-          );
-          return;
-        }
-      }
-      if (v.customerId === 'new' && v.customerName.trim().length < 2) {
-        this.modalError.set('Enter the new customer’s name.');
-        return;
-      }
-      const payload = {
-        customerId:
-          v.customerId && v.customerId !== 'new' ? v.customerId : undefined,
-        customerName: v.customerId === 'new' ? v.customerName.trim() : undefined,
-        lines: lines.map((l) => ({
-          itemId: l.itemId || undefined,
-          description: l.description.trim(),
-          quantity: Number(l.quantity),
-          unitPrice: Number(l.unitPrice),
-        })),
-        paymentMethod: v.paymentMethod,
-        paymentStatus: v.paymentStatus,
-        notes: v.notes.trim(),
-      };
-      run = () => this.api.recordSale(payload);
     }
 
     if (!run) return;
@@ -557,59 +494,6 @@ export class OwnerDashboard {
     }
   }
 
-  /* ---------------- record sale helpers ---------------- */
-
-  addSaleLine(): void {
-    if (this.saleLines().length >= 20) return;
-    this.saleLines.update((lines) => [
-      ...lines,
-      { itemId: '', description: '', quantity: '1', unitPrice: '' },
-    ]);
-  }
-
-  removeSaleLine(index: number): void {
-    if (this.saleLines().length <= 1) return;
-    this.saleLines.update((lines) => lines.filter((_, i) => i !== index));
-  }
-
-  setSaleLine(index: number, patch: Partial<SaleLineForm>): void {
-    this.saleLines.update((lines) =>
-      lines.map((l, i) => (i === index ? { ...l, ...patch } : l)),
-    );
-  }
-
-  /** Picking an inventory item pre-fills its name as the description. */
-  onSaleItemChange(index: number, itemId: string): void {
-    const line = this.saleLines()[index];
-    const item = this.saleOptions()?.items.find((i) => i.id === itemId);
-    const patch: Partial<SaleLineForm> = { itemId };
-    if (item && !line.description.trim()) patch.description = item.name;
-    this.setSaleLine(index, patch);
-  }
-
-  /** Stock hint under a sale line (free-text lines never touch stock). */
-  lineStockHint(index: number): string {
-    const line = this.saleLines()[index];
-    if (!line.itemId) return 'Free-text line — stock untouched';
-    const item = this.saleOptions()?.items.find((i) => i.id === line.itemId);
-    return item ? `In stock: ${item.qty} ${item.unit}` : '';
-  }
-
-  retrySaleOptions(): void {
-    void this.loadSaleOptions();
-  }
-
-  private async loadSaleOptions(): Promise<void> {
-    this.optionsState.set('loading');
-    const res = await this.api.fetchSaleOptions();
-    if (!res.ok || !res.options) {
-      this.optionsError.set(res.message || 'Could not load sale options.');
-      this.optionsState.set('error');
-      return;
-    }
-    this.saleOptions.set(res.options);
-    this.optionsState.set('ready');
-  }
 }
 
 /** Month-over-month change, or null when there is nothing to compare. */

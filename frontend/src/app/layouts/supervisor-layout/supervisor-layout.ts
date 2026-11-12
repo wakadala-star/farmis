@@ -96,6 +96,12 @@ export class SupervisorLayout {
           sub: 'Approve credit transactions submitted by workers.',
           mob: 'Approve transactions',
         };
+      case '/supervisor/sales':
+        return {
+          title: 'Sales & Customers',
+          sub: 'Record farm sales, review receipts and manage the customer book.',
+          mob: 'Sales & customers',
+        };
       case '/supervisor/workers':
         return {
           title: 'Workers',
@@ -117,6 +123,7 @@ export class SupervisorLayout {
     { label: 'Reports', icon: 'fa-solid fa-file-lines', link: '/supervisor/reports' },
     { label: 'Attendance', icon: 'fa-solid fa-clock', link: '/supervisor/attendance' },
     { label: 'Transactions', icon: 'fa-solid fa-money-bill-transfer', link: '/supervisor/transactions' },
+    { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/supervisor/sales' },
     { label: 'Workers', icon: 'fa-solid fa-users', link: '/supervisor/workers' },
   ];
 

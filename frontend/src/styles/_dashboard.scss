@@ -27,6 +27,8 @@
   border-radius: 15px;
   border: 1px solid transparent;
   min-width: 0;
+  /* Belt & braces: long values must never spill past the card. */
+  overflow: hidden;
 
   &__icon {
     width: 44px;
@@ -865,6 +867,30 @@
       height: 38px;
       font-size: 17px;
       border-radius: 11px;
+    }
+  }
+}
+
+/* Phones + small tablets: the 2-up/3-up tiles are too narrow for
+   nowrap values like "3 plots · 6.4 ha" — let the value, trend and
+   label wrap inside the card instead of spilling out of it (which
+   also stretched the page sideways). */
+@media (max-width: $bp-lg-down) {
+  .stat {
+    &__row {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+
+    &__value {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      min-width: 0;
+    }
+
+    &__label {
+      white-space: normal;
+      line-height: 1.3;
     }
   }
 }

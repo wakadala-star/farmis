@@ -383,6 +383,20 @@
         color: #fff;
       }
     }
+
+    /* Record Sale action — always green, pushed to the row's end. */
+    &--action {
+      margin-left: auto;
+      background: $green-600;
+      border-color: $green-600;
+      color: #fff;
+
+      &:hover {
+        background: $green-700;
+        border-color: $green-700;
+        color: #fff;
+      }
+    }
   }
 }
 

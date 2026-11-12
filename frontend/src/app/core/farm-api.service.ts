@@ -478,11 +478,15 @@ export class FarmApiService {
 
   /* ---------------- loading ---------------- */
 
-  /** Load a collection once per session; retries after an error. */
-  async ensure(col: Collection): Promise<void> {
+  /**
+   * Load a collection once per session; retries after an error.
+   * `force` re-reads an already-loaded collection silently (used after
+   * a mutation, e.g. a recorded sale refreshing the dashboard).
+   */
+  async ensure(col: Collection, force = false): Promise<void> {
     const state = this._state()[col];
-    if (state.loaded || state.loading) return;
-    await this.load(col);
+    if (!force && (state.loaded || state.loading)) return;
+    await this.load(col, force && state.loaded);
   }
 
   private async load(col: Collection, silent = false): Promise<void> {
@@ -689,7 +693,11 @@ export class FarmApiService {
     return this.send('POST', '/expenses', input, 'ownerSummary');
   }
 
-  /** Records a sale with stock deduction (POST /sales). */
+  /**
+   * Records a sale with stock deduction (POST /sales). No list refresh
+   * happens here: the owner summary is owner-only, so each screen
+   * refreshes its own data after a successful recording.
+   */
   recordSale(input: {
     customerName?: string;
     customerId?: string;
@@ -698,7 +706,7 @@ export class FarmApiService {
     paymentStatus?: string;
     notes?: string;
   }): Promise<ActionResult> {
-    return this.send('POST', '/sales', input, 'ownerSummary');
+    return this.send('POST', '/sales', input);
   }
 
   /** Recruits a worker or supervisor into a department (POST /users). */

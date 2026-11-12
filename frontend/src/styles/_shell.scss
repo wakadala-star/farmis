@@ -658,7 +658,11 @@
   right: 0;
   bottom: 0;
   z-index: 50;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr): plain 1fr floors each column at its min-content
+     ("Inventory", "Reports", …), which pushed the trailing "More"
+     item out of view on narrow phones and stretched the page
+     sideways. Equal fractions keep all seven slots inside. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: stretch;
   background: $card;
   border-top: 1px solid $line;

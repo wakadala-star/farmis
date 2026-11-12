@@ -24,6 +24,10 @@ body {
   background: $page;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Vertical scrolling only — any stray wide content gets clipped
+     instead of stretching the page sideways (clip keeps position:
+     sticky working, unlike overflow-x: hidden). */
+  overflow-x: clip;
 }
 
 h1,

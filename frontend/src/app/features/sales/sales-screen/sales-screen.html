@@ -3,9 +3,9 @@
     <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
     <span>
       The full sales history with filters and per-sale stock impact, plus the
-      customer book. Record new sales from the dashboard’s
-      <strong>Quick Actions</strong> — a customer can’t be removed while sales
-      still reference them.
+      customer book. Record a sale with the <strong>Record Sale</strong> button
+      below (the dashboard’s <strong>Quick Actions</strong> work too) — a
+      customer can’t be removed while sales still reference them.
     </span>
   </p>
 
@@ -47,6 +47,14 @@
       <i class="fa-solid fa-address-book" aria-hidden="true"></i>
       <span>Customers</span>
       <span class="badge-count">{{ customers().length }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn ws-tabs__btn--action"
+      (click)="saleOpen.set(true)"
+    >
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      <span>Record Sale</span>
     </button>
   </div>
 
@@ -485,5 +493,10 @@
         </div>
       </article>
     </div>
+  }
+
+  <!-- ============ Record Sale (shared modal) ============ -->
+  @if (saleOpen()) {
+    <app-record-sale (close)="closeSale()" (recorded)="onSaleRecorded($event)" />
   }
 </section>

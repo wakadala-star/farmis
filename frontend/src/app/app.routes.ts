@@ -78,8 +78,8 @@ export const routes: Routes = [
       {
         path: 'sales',
         loadComponent: () =>
-          import('./features/sales/owner-sales/owner-sales').then(
-            (m) => m.OwnerSales,
+          import('./features/sales/sales-screen/sales-screen').then(
+            (m) => m.SalesScreen,
           ),
       },
     ],

@@ -13,6 +13,7 @@ import {
   SalesListRow,
 } from '../../../core/farm-api.service';
 import { fmtDay, fmtMoney } from '../../../core/farm-data.service';
+import { RecordSale } from '../../../shared/record-sale/record-sale';
 
 const METHOD_LABELS: Record<string, string> = {
   cash: 'Cash',
@@ -34,22 +35,23 @@ const STATUS_CHIPS: Record<string, string> = {
 };
 
 /**
- * Owner Sales & Customers (Phase 3A) — two tabs on one screen:
+ * Sales & Customers (Phase 3A) — two tabs on one screen, shared by the
+ * owner (/sales) and supervisors (/supervisor/sales):
  *
  *   Sales      the full list with date / status / method filters; a row
  *              expands to its detail (line items, seller, and the stock
- *              movements the sale produced). Recording sales stays on
- *              the dashboard's Quick Actions.
+ *              movements the sale produced). Record Sale opens the
+ *              shared modal — the dashboard's Quick Action works too.
  *   Customers  the customer book: add, edit and delete contacts —
  *              deleting is refused (409 from the API) while sales still
  *              reference the customer.
  */
 @Component({
-  selector: 'app-owner-sales',
-  imports: [ReactiveFormsModule],
-  templateUrl: './owner-sales.html',
+  selector: 'app-sales-screen',
+  imports: [ReactiveFormsModule, RecordSale],
+  templateUrl: './sales-screen.html',
 })
-export class OwnerSales {
+export class SalesScreen {
   private readonly api = inject(FarmApiService);
 
   readonly fmtDay = fmtDay;
@@ -102,6 +104,24 @@ export class OwnerSales {
   constructor() {
     void this.loadSales();
     void this.loadCustomers();
+  }
+
+  /* ---------------- record sale (shared modal) ---------------- */
+
+  readonly saleOpen = signal(false);
+
+  closeSale(): void {
+    this.saleOpen.set(false);
+  }
+
+  /** Record Sale succeeded → close the modal, confirm via the top
+   *  notice and refresh both tabs (the sale may add a customer). */
+  async onSaleRecorded(message: string): Promise<void> {
+    this.saleOpen.set(false);
+    this.notice.set(message);
+    this.error.set('');
+    await this.loadSales();
+    await this.loadCustomers();
   }
 
   /* ---------------- sales list ---------------- */
