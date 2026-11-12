@@ -35,6 +35,13 @@ interface PageMeta {
   mob: string;
 }
 
+/** One system message in the bell's dropdown (Phase 4). */
+interface BellMessage {
+  text: string;
+  link: string;
+  icon: string;
+}
+
 /**
  * Worker application shell — desktop sidebar, sticky topbar with the
  * clock control, mobile drawer + bottom navigation.
@@ -69,6 +76,28 @@ export class WorkerLayout {
 
   /** Own records still waiting for the supervisor's approval. */
   readonly pendingCount = this.api.pendingCount;
+
+  /** Bell dropdown open state. */
+  readonly bellMenuOpen = signal(false);
+
+  /** System messages behind the bell badge — attendance only (the
+   *  layout already loads own attendance; Phase 4). Equals pendingCount. */
+  readonly messages = computed<BellMessage[]>(() => {
+    const pending = this.api
+      .attendance()
+      .filter((rec) => rec.status === 'pending').length;
+    if (pending === 0) return [];
+    return [
+      {
+        text:
+          pending === 1
+            ? '1 clock record awaiting approval'
+            : `${pending} clock records awaiting approval`,
+        link: '/worker/attendance',
+        icon: 'fa-solid fa-clock',
+      },
+    ];
+  });
 
   /** Human date for the topbar pill, e.g. 'Tue, Nov 11, 2026'. */
   readonly todayLabel = new Date().toLocaleDateString('en-US', {
@@ -186,6 +215,14 @@ export class WorkerLayout {
     this.clockMenuOpen.set(false);
   }
 
+  toggleBell(): void {
+    this.bellMenuOpen.update((open) => !open);
+  }
+
+  closeBell(): void {
+    this.bellMenuOpen.set(false);
+  }
+
   /** Starts the shift, or ends it and sends the record for approval. */
   async toggleClock(): Promise<void> {
     if (this.clockBusy()) return;
@@ -231,6 +268,7 @@ export class WorkerLayout {
     this.userMenuOpen.set(false);
     this.drawerOpen.set(false);
     this.clockMenuOpen.set(false);
+    this.bellMenuOpen.set(false);
     this.auth.signOut();
     void this.router.navigate(['/signin']);
   }
@@ -240,6 +278,7 @@ export class WorkerLayout {
     this.drawerOpen.set(false);
     this.userMenuOpen.set(false);
     this.clockMenuOpen.set(false);
+    this.bellMenuOpen.set(false);
   }
 
   /** '/worker/tasks?x=1' → '/worker/tasks' */

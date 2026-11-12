@@ -83,12 +83,45 @@
       </div>
 
       <div class="topbar__actions">
-        <span class="icon-btn bell" title="Records awaiting approval">
-          <i class="fa-regular fa-bell"></i>
-          @if (pendingCount() > 0) {
-            <span class="bell__badge">{{ pendingCount() }}</span>
+        <div class="bell-wrap">
+          <button
+            type="button"
+            class="icon-btn bell"
+            (click)="toggleBell()"
+            [attr.aria-expanded]="bellMenuOpen()"
+            aria-haspopup="menu"
+            title="System messages"
+            aria-label="System messages"
+          >
+            <i class="fa-regular fa-bell"></i>
+            @if (pendingCount() > 0) {
+              <span class="bell__badge">{{ pendingCount() }}</span>
+            }
+          </button>
+
+          @if (bellMenuOpen()) {
+            <div class="bell-pop" role="menu" aria-label="System messages">
+              <p class="bell-pop__title">System messages</p>
+              @for (msg of messages(); track msg.link) {
+                <a
+                  class="bell-pop__msg"
+                  role="menuitem"
+                  [routerLink]="msg.link"
+                  (click)="closeBell()"
+                >
+                  <i [class]="msg.icon"></i>
+                  <span>{{ msg.text }}</span>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </a>
+              } @empty {
+                <p class="bell-pop__empty">
+                  <i class="fa-regular fa-circle-check"></i>
+                  No new messages
+                </p>
+              }
+            </div>
           }
-        </span>
+        </div>
 
         <div class="date-pill" title="Today">
           <i class="fa-regular fa-calendar"></i>
@@ -219,9 +252,14 @@
       <span>Entry</span>
     </a>
     <span class="bottom-nav__fab-slot">
-      <span class="bottom-nav__fab" title="Coming soon">
+      <a
+        class="bottom-nav__fab"
+        routerLink="/worker/data-entry"
+        title="Record an entry"
+        (click)="closeDrawer()"
+      >
         <i class="fa-solid fa-plus"></i>
-      </span>
+      </a>
     </span>
     <a
       class="bottom-nav__item"

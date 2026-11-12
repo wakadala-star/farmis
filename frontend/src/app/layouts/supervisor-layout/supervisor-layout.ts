@@ -32,6 +32,13 @@ interface PageMeta {
   mob: string;
 }
 
+/** One system message in the bell's dropdown (Phase 4). */
+interface BellMessage {
+  text: string;
+  link: string;
+  icon: string;
+}
+
 /**
  * Supervisor application shell — shared by the crop and livestock
  * supervisors (the session's department scopes every screen).
@@ -63,6 +70,50 @@ export class SupervisorLayout {
 
   /** Badge on the bell: everything still waiting for this supervisor. */
   readonly pendingCount = this.api.supervisorPendingCount;
+
+  /** Human date for the topbar pill, e.g. 'Fri, Nov 13, 2026'. */
+  readonly todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  /** Bell dropdown open state. */
+  readonly bellMenuOpen = signal(false);
+
+  /** System messages: the pending work behind the badge, each linking
+   *  to the page that clears it (Phase 4). Sums to pendingCount(). */
+  readonly messages = computed<BellMessage[]>(() => {
+    const list: BellMessage[] = [];
+    const attendance = this.api
+      .deptAttendance()
+      .filter((rec) => rec.status === 'pending').length;
+    if (attendance > 0) {
+      list.push({
+        text:
+          attendance === 1
+            ? '1 attendance record awaiting approval'
+            : `${attendance} attendance records awaiting approval`,
+        link: '/supervisor/attendance',
+        icon: 'fa-solid fa-clock',
+      });
+    }
+    const credits = this.api
+      .transactions()
+      .filter((tx) => tx.status === 'pending').length;
+    if (credits > 0) {
+      list.push({
+        text:
+          credits === 1
+            ? '1 credit request awaiting decision'
+            : `${credits} credit requests awaiting decision`,
+        link: '/supervisor/transactions',
+        icon: 'fa-solid fa-money-bill-transfer',
+      });
+    }
+    return list;
+  });
 
   /** Active top-level path, kept in sync with the router. */
   private readonly path = signal('');
@@ -180,9 +231,18 @@ export class SupervisorLayout {
     this.userMenuOpen.update((open) => !open);
   }
 
+  toggleBell(): void {
+    this.bellMenuOpen.update((open) => !open);
+  }
+
+  closeBell(): void {
+    this.bellMenuOpen.set(false);
+  }
+
   signOut(): void {
     this.userMenuOpen.set(false);
     this.drawerOpen.set(false);
+    this.bellMenuOpen.set(false);
     this.auth.signOut();
     void this.router.navigate(['/signin']);
   }
@@ -191,6 +251,7 @@ export class SupervisorLayout {
   onEscape(): void {
     this.drawerOpen.set(false);
     this.userMenuOpen.set(false);
+    this.bellMenuOpen.set(false);
   }
 
   /** '/supervisor/tasks?x=1' → '/supervisor/tasks' */
