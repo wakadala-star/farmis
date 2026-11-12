@@ -102,6 +102,12 @@ export class SupervisorLayout {
           sub: 'Record farm sales, review receipts and manage the customer book.',
           mob: 'Sales & customers',
         };
+      case '/supervisor/inventory':
+        return {
+          title: 'Inventory & Stores',
+          sub: 'Track your department’s items, movements and reorder alerts.',
+          mob: 'Stock & movements',
+        };
       case '/supervisor/workers':
         return {
           title: 'Workers',
@@ -124,6 +130,7 @@ export class SupervisorLayout {
     { label: 'Attendance', icon: 'fa-solid fa-clock', link: '/supervisor/attendance' },
     { label: 'Transactions', icon: 'fa-solid fa-money-bill-transfer', link: '/supervisor/transactions' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/supervisor/sales' },
+    { label: 'Inventory & Stores', icon: 'fa-solid fa-warehouse', link: '/supervisor/inventory' },
     { label: 'Workers', icon: 'fa-solid fa-users', link: '/supervisor/workers' },
   ];
 

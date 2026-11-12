@@ -69,6 +69,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Livestock updates and alerts from your supervisors.`,
           mob: 'Livestock updates & alerts',
         };
+      case '/inventory':
+        return {
+          title: 'Inventory & Stores',
+          sub: `Welcome back, ${name}! Track items, movements and reorder alerts.`,
+          mob: 'Stock & movements',
+        };
       case '/workers':
         return {
           title: 'Workers & HR',
@@ -94,7 +100,7 @@ export class OwnerLayout {
     { label: 'Dashboard', icon: 'fa-solid fa-house', link: '/dashboard' },
     { label: 'Crop Management', icon: 'fa-solid fa-seedling', link: '/crops' },
     { label: 'Livestock Management', icon: 'fa-solid fa-cow', link: '/livestock' },
-    { label: 'Inventory & Stores', icon: 'fa-solid fa-warehouse' },
+    { label: 'Inventory & Stores', icon: 'fa-solid fa-warehouse', link: '/inventory' },
     { label: 'Workers & HR', icon: 'fa-solid fa-users', link: '/workers' },
     { label: 'Procurement', icon: 'fa-solid fa-basket-shopping' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/sales' },

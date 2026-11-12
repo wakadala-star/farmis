@@ -287,6 +287,67 @@ export interface CustomerRec {
   saleCount: number;
 }
 
+/* ---------------- Phase 3B: Inventory & Stores screen ---------------- */
+
+/** One row of GET /api/inventory (list, name order). */
+export interface InventoryItemRec {
+  id: string;
+  code: string;
+  name: string;
+  categoryId: string;
+  category: string;
+  departmentId: string | null;
+  department: string;
+  unit: string;
+  qty: number;
+  reorderLevel: number;
+  unitCost: number;
+  description: string;
+  low: boolean; // quantity_on_hand <= reorder_level (dashboard predicate)
+  updatedAt: string; // YYYY-MM-DD
+}
+
+/** Filter for GET /api/inventory (all optional). */
+export interface InventoryFilter {
+  category?: string; // category id
+  low?: string; // '1' → at/below reorder level
+  q?: string; // name/code search
+}
+
+/** One row of GET /api/inventory/categories (read-only list). */
+export interface InventoryCategoryRec {
+  id: string;
+  name: string;
+  description: string;
+  departmentId: string | null;
+  department: string;
+  itemCount: number;
+}
+
+/** Filter for GET /api/inventory/movements (all optional). */
+export interface MovementFilter {
+  item?: string; // item id
+  type?: string; // stock_in | stock_out | adjustment
+  dateFrom?: string; // YYYY-MM-DD, inclusive
+  dateTo?: string;
+}
+
+/** One row of GET /api/inventory/movements (newest first). */
+export interface StockMovementRec {
+  id: string;
+  itemId: string;
+  item: string;
+  code: string;
+  unit: string;
+  type: string; // stock_in | stock_out | adjustment
+  quantity: number; // signed for adjustments, positive for in/out
+  unitCost: number | null;
+  reference: string;
+  notes: string;
+  date: string; // YYYY-MM-DD
+  by: string; // recorder's name
+}
+
 /** A row of GET /api/users as the owner's staff list shows it. */
 export type StaffRec = ApiUser;
 
@@ -825,6 +886,120 @@ export class FarmApiService {
   /** Removes a customer — 409 while sales reference them (DELETE). */
   removeCustomer(id: string): Promise<ActionResult> {
     return this.send('DELETE', `/customers/${id}`, undefined);
+  }
+
+  /** Item list (GET /inventory, capped at 200 rows server-side). */
+  async listInventory(filter: InventoryFilter): Promise<{
+    ok: boolean;
+    message: string;
+    count: number;
+    items: InventoryItemRec[];
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filter.category) params.set('category', filter.category);
+      if (filter.low) params.set('low', filter.low);
+      if (filter.q) params.set('q', filter.q);
+      params.set('limit', '200');
+      const res = await this.get<{ count: number; items: InventoryItemRec[] }>(
+        `/inventory?${params.toString()}`,
+      );
+      return { ok: true, message: '', count: res.count, items: res.items };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), count: 0, items: [] };
+    }
+  }
+
+  /** Categories, read-only (GET /inventory/categories). */
+  async listInventoryCategories(): Promise<{
+    ok: boolean;
+    message: string;
+    categories: InventoryCategoryRec[];
+  }> {
+    try {
+      const res = await this.get<{ categories: InventoryCategoryRec[] }>(
+        '/inventory/categories',
+      );
+      return { ok: true, message: '', categories: res.categories };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), categories: [] };
+    }
+  }
+
+  /** Movement log (GET /inventory/movements, capped at 200 rows). */
+  async listMovements(filter: MovementFilter): Promise<{
+    ok: boolean;
+    message: string;
+    count: number;
+    movements: StockMovementRec[];
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filter.item) params.set('item', filter.item);
+      if (filter.type) params.set('type', filter.type);
+      if (filter.dateFrom) params.set('dateFrom', filter.dateFrom);
+      if (filter.dateTo) params.set('dateTo', filter.dateTo);
+      params.set('limit', '200');
+      const res = await this.get<{ count: number; movements: StockMovementRec[] }>(
+        `/inventory/movements?${params.toString()}`,
+      );
+      return { ok: true, message: '', count: res.count, movements: res.movements };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), count: 0, movements: [] };
+    }
+  }
+
+  /**
+   * Adds an item (POST /inventory) — the opening quantity is only
+   * accepted here; later stock changes go through movements.
+   */
+  createInventoryItem(input: {
+    name: string;
+    code?: string;
+    unit: string;
+    categoryId: string;
+    qtyOnHand?: number;
+    reorderLevel?: number;
+    unitCost?: number;
+    description?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/inventory', input);
+  }
+
+  /** Edits an item's details (PATCH /inventory/:id) — never quantity. */
+  updateInventoryItem(
+    id: string,
+    input: {
+      name?: string;
+      code?: string;
+      unit?: string;
+      categoryId?: string;
+      reorderLevel?: number;
+      unitCost?: number;
+      description?: string;
+    },
+  ): Promise<ActionResult> {
+    return this.send('PATCH', `/inventory/${id}`, input);
+  }
+
+  /** Removes an item — 409 while sales or movements reference it. */
+  removeInventoryItem(id: string): Promise<ActionResult> {
+    return this.send('DELETE', `/inventory/${id}`, undefined);
+  }
+
+  /**
+   * Records a movement (POST /inventory/movements): stock_out can't
+   * exceed on-hand (409), adjustments are signed deltas (409 below 0).
+   */
+  recordStockMovement(input: {
+    itemId: string;
+    type: string;
+    quantity: number;
+    unitCost?: number | null;
+    reference?: string;
+    notes?: string;
+  }): Promise<ActionResult> {
+    return this.send('POST', '/inventory/movements', input);
   }
 
   /* ---------------- internals ---------------- */

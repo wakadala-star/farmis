@@ -1,0 +1,813 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      The item book, the movement log and the read-only categories. Stock
+      levels change <strong>only through movements</strong> — stock out can’t
+      exceed what’s on hand, and an adjustment is a signed delta (+5 found /
+      −3 damaged). An item with sales or movement history can’t be removed.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ============ Tabs ============ -->
+  <div class="ws-tabs" role="tablist" aria-label="Inventory sections">
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'items'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'items'"
+      (click)="switchTab('items')"
+    >
+      <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
+      <span>Items</span>
+      <span class="badge-count">{{ itemsCount() }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'movements'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'movements'"
+      (click)="switchTab('movements')"
+    >
+      <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+      <span>Movements</span>
+      <span class="badge-count">{{ movementsCount() }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'categories'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'categories'"
+      (click)="switchTab('categories')"
+    >
+      <i class="fa-solid fa-folder-tree" aria-hidden="true"></i>
+      <span>Categories</span>
+      <span class="badge-count">{{ categories().length }}</span>
+    </button>
+  </div>
+
+  @switch (tab()) {
+    @case ('items') {
+      <!-- ============ Filters ============ -->
+      <div class="filter-bar" role="group" aria-label="Filter items">
+        <div class="filter-bar__field">
+          <label for="item-category">Category</label>
+          <select
+            id="item-category"
+            class="select"
+            [value]="filterCategory()"
+            (change)="onFilterCategory($event)"
+          >
+            <option value="">All categories</option>
+            @for (category of categories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="item-level">Levels</label>
+          <select
+            id="item-level"
+            class="select"
+            [value]="filterLow()"
+            (change)="onFilterLow($event)"
+          >
+            <option value="">All levels</option>
+            <option value="1">At or below reorder level</option>
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="item-q">Search</label>
+          <input
+            id="item-q"
+            type="search"
+            class="input"
+            placeholder="Name or code"
+            [value]="filterQ()"
+            (change)="onFilterQ($event)"
+          />
+        </div>
+        @if (hasItemFilters()) {
+          <button type="button" class="btn-mini" (click)="resetItemFilters()">
+            <i class="fa-solid fa-rotate-left"></i>
+            Reset
+          </button>
+        }
+      </div>
+
+      <div class="ws__grid">
+        <!-- ============ Add / edit item ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i
+              [class]="
+                editingId()
+                  ? 'fa-solid fa-pen widget__icon'
+                  : 'fa-solid fa-box-open widget__icon'
+              "
+            ></i>
+            <h2 class="widget__title">
+              {{ editingId() ? 'Edit Item' : 'Add an Item' }}
+            </h2>
+          </header>
+
+          <div class="widget__body">
+            <form [formGroup]="itemForm" (ngSubmit)="saveItem()">
+              <div class="field">
+                <label class="field__label" for="inv-name">Item name</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-box field__icon"></i>
+                  <input
+                    id="inv-name"
+                    type="text"
+                    class="input"
+                    [class.is-invalid]="invalid('name')"
+                    maxlength="120"
+                    placeholder="e.g. Maize seed"
+                    formControlName="name"
+                  />
+                </div>
+                @if (invalid('name')) {
+                  <span class="field__error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    Enter the item’s name (2–120 characters).
+                  </span>
+                }
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="inv-code">Item code</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-barcode field__icon"></i>
+                    <input
+                      id="inv-code"
+                      type="text"
+                      class="input"
+                      maxlength="50"
+                      placeholder="Optional, e.g. SEED-MAIZE-01"
+                      formControlName="code"
+                    />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="inv-unit">Unit</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-scale-balanced field__icon"></i>
+                    <input
+                      id="inv-unit"
+                      type="text"
+                      class="input"
+                      [class.is-invalid]="invalid('unit')"
+                      maxlength="30"
+                      placeholder="kg, bags, litres…"
+                      formControlName="unit"
+                    />
+                  </div>
+                  @if (invalid('unit')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      A unit is required.
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="inv-cat">Category</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-folder field__icon"></i>
+                    <select
+                      id="inv-cat"
+                      class="select"
+                      [class.is-invalid]="invalid('categoryId')"
+                      formControlName="categoryId"
+                    >
+                      <option value="">Pick a category…</option>
+                      @for (category of categories(); track category.id) {
+                        <option [value]="category.id">
+                          {{ category.name }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+                  @if (invalid('categoryId')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Pick a category.
+                    </span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field__label" for="inv-cost">Unit cost</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-coins field__icon"></i>
+                    <input
+                      id="inv-cost"
+                      type="number"
+                      min="0"
+                      step="any"
+                      class="input"
+                      formControlName="unitCost"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              @if (!editingId()) {
+                <div class="field-row">
+                  <div class="field">
+                    <label class="field__label" for="inv-qty"
+                      >Opening quantity</label
+                    >
+                    <div class="field__box">
+                      <i class="fa-solid fa-cubes field__icon"></i>
+                      <input
+                        id="inv-qty"
+                        type="number"
+                        min="0"
+                        step="any"
+                        class="input"
+                        formControlName="qtyOnHand"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="inv-reorder"
+                      >Reorder level</label
+                    >
+                    <div class="field__box">
+                      <i class="fa-solid fa-triangle-exclamation field__icon"></i>
+                      <input
+                        id="inv-reorder"
+                        type="number"
+                        min="0"
+                        step="any"
+                        class="input"
+                        formControlName="reorderLevel"
+                      />
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="field">
+                  <label class="field__label" for="inv-reorder"
+                    >Reorder level</label
+                  >
+                  <div class="field__box">
+                    <i class="fa-solid fa-triangle-exclamation field__icon"></i>
+                    <input
+                      id="inv-reorder"
+                      type="number"
+                      min="0"
+                      step="any"
+                      class="input"
+                      formControlName="reorderLevel"
+                    />
+                  </div>
+                  <span class="field__hint">
+                    <i class="fa-solid fa-circle-info"></i>
+                    Stock on hand doesn’t edit here — record a movement on
+                    the <strong>Movements</strong> tab instead.
+                  </span>
+                </div>
+              }
+
+              <div class="field">
+                <label class="field__label" for="inv-desc">Description</label>
+                <textarea
+                  id="inv-desc"
+                  class="input input--area"
+                  rows="2"
+                  maxlength="500"
+                  placeholder="Optional (500 max)"
+                  formControlName="description"
+                ></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  class="btn btn--primary"
+                  type="submit"
+                  [disabled]="itemSubmitting()"
+                  [attr.aria-busy]="itemSubmitting()"
+                >
+                  <span>{{ editingId() ? 'Save Changes' : 'Add Item' }}</span>
+                  @if (itemSubmitting()) {
+                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                  } @else if (editingId()) {
+                    <i class="fa-solid fa-check"></i>
+                  } @else {
+                    <i class="fa-solid fa-plus"></i>
+                  }
+                </button>
+                @if (editingId()) {
+                  <button
+                    class="btn btn--ghost"
+                    type="button"
+                    (click)="cancelItemEdit()"
+                  >
+                    <span>Cancel</span>
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                }
+              </div>
+            </form>
+          </div>
+        </article>
+
+        <!-- ============ Item list ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-warehouse widget__icon"></i>
+            <h2 class="widget__title">Items</h2>
+            <div class="widget__action">
+              <span class="badge-count">{{ itemsCount() }}</span>
+            </div>
+          </header>
+
+          <div class="widget__body">
+            @if (itemsLoading()) {
+              <p class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Loading items…
+              </p>
+            } @else if (itemsError()) {
+              <div class="form-alert form-alert--error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ itemsError() }}</span>
+              </div>
+              <button type="button" class="btn-mini" (click)="retryItems()">
+                <i class="fa-solid fa-rotate-right"></i>
+                Try again
+              </button>
+            } @else {
+              <p class="ws__count">
+                Showing {{ items().length }} of {{ itemsCount() }} items
+                @if (hasItemFilters()) {
+                  (filtered)
+                }
+              </p>
+
+              @for (item of items(); track item.id) {
+                <div class="list-row">
+                  <span class="list-row__icon">
+                    <i class="fa-solid fa-box"></i>
+                  </span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{ item.name }}</strong>
+                      @if (item.low) {
+                        <span class="chip chip--amber">Low stock</span>
+                      }
+                    </p>
+                    <p class="list-row__sub">
+                      @if (item.code) {
+                        {{ item.code }} ·
+                      }
+                      {{ item.category }}
+                      @if (item.department) {
+                        · {{ item.department }}
+                      }
+                    </p>
+                    <p class="list-row__meta">
+                      <i class="fa-regular fa-calendar"></i>
+                      Updated {{ fmtDay(item.updatedAt) }}
+                      @if (item.reorderLevel > 0) {
+                        · Reorder at {{ item.reorderLevel }}
+                      }
+                      @if (item.unitCost > 0) {
+                        · {{ fmtMoney(item.unitCost) }}/unit
+                      }
+                    </p>
+                  </div>
+                  <div class="list-row__side">
+                    <span class="list-row__money"
+                      >{{ item.qty }} {{ item.unit }}</span
+                    >
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      title="Edit item"
+                      (click)="editItem(item)"
+                    >
+                      <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-mini btn-mini--no"
+                      title="Remove item"
+                      [disabled]="removingId() === item.id"
+                      (click)="removeItem(item)"
+                    >
+                      @if (removingId() === item.id) {
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                      } @else {
+                        <i class="fa-solid fa-trash"></i>
+                      }
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-boxes-stacked"></i>
+                  @if (hasItemFilters()) {
+                    No items match these filters — adjust or reset them.
+                  } @else {
+                    No items yet — add the first one with the form.
+                  }
+                </p>
+              }
+            }
+          </div>
+        </article>
+      </div>
+    }
+
+    @case ('movements') {
+      <!-- ============ Filters ============ -->
+      <div class="filter-bar" role="group" aria-label="Filter movements">
+        <div class="filter-bar__field">
+          <label for="mov-item">Item</label>
+          <select
+            id="mov-item"
+            class="select"
+            [value]="movItem()"
+            (change)="onMovItem($event)"
+          >
+            <option value="">All items</option>
+            @for (item of allItems(); track item.id) {
+              <option [value]="item.id">{{ item.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="mov-type">Type</label>
+          <select
+            id="mov-type"
+            class="select"
+            [value]="movType()"
+            (change)="onMovType($event)"
+          >
+            <option value="">All types</option>
+            <option value="stock_in">Stock In</option>
+            <option value="stock_out">Stock Out</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="mov-from">From</label>
+          <input
+            id="mov-from"
+            type="date"
+            class="input"
+            [value]="movFrom()"
+            (change)="onMovFrom($event)"
+          />
+        </div>
+        <div class="filter-bar__field">
+          <label for="mov-to">To</label>
+          <input
+            id="mov-to"
+            type="date"
+            class="input"
+            [value]="movTo()"
+            (change)="onMovTo($event)"
+          />
+        </div>
+        @if (hasMovFilters()) {
+          <button type="button" class="btn-mini" (click)="resetMovFilters()">
+            <i class="fa-solid fa-rotate-left"></i>
+            Reset
+          </button>
+        }
+      </div>
+
+      <div class="ws__grid">
+        <!-- ============ Record a movement ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-arrows-rotate widget__icon"></i>
+            <h2 class="widget__title">Record a Movement</h2>
+          </header>
+
+          <div class="widget__body">
+            <form [formGroup]="movementForm" (ngSubmit)="saveMovement()">
+              <div class="field">
+                <label class="field__label" for="movm-item">Item</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-box field__icon"></i>
+                  <select
+                    id="movm-item"
+                    class="select"
+                    [class.is-invalid]="invalidMov('itemId')"
+                    formControlName="itemId"
+                  >
+                    <option value="">Pick an item…</option>
+                    @for (item of allItems(); track item.id) {
+                      <option [value]="item.id">
+                        {{ item.name }} ({{ item.qty }} {{ item.unit }})
+                      </option>
+                    }
+                  </select>
+                </div>
+                @if (invalidMov('itemId')) {
+                  <span class="field__error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    Pick the item this movement is for.
+                  </span>
+                }
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="movm-type">Type</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-arrow-right-arrow-left field__icon"></i>
+                    <select
+                      id="movm-type"
+                      class="select"
+                      formControlName="type"
+                    >
+                      <option value="stock_in">Stock In (+)</option>
+                      <option value="stock_out">Stock Out (−)</option>
+                      <option value="adjustment">Adjustment (±)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="movm-qty">Quantity</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-hashtag field__icon"></i>
+                    <input
+                      id="movm-qty"
+                      type="number"
+                      step="any"
+                      class="input"
+                      [class.is-invalid]="invalidMov('quantity')"
+                      placeholder="e.g. 5 or −2"
+                      formControlName="quantity"
+                    />
+                  </div>
+                  @if (invalidMov('quantity')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Enter a non-zero quantity.
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="movm-ref">Reference</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-file-invoice field__icon"></i>
+                    <input
+                      id="movm-ref"
+                      type="text"
+                      class="input"
+                      maxlength="80"
+                      placeholder="Optional — GRN, invoice #…"
+                      formControlName="reference"
+                    />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="movm-cost">Unit cost</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-coins field__icon"></i>
+                    <input
+                      id="movm-cost"
+                      type="number"
+                      min="0"
+                      step="any"
+                      class="input"
+                      placeholder="Optional"
+                      formControlName="unitCost"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="movm-notes">Notes</label>
+                <textarea
+                  id="movm-notes"
+                  class="input input--area"
+                  rows="2"
+                  maxlength="500"
+                  placeholder="Optional (500 max)"
+                  formControlName="notes"
+                ></textarea>
+              </div>
+
+              <p class="modal-hint">
+                <i class="fa-solid fa-circle-info"></i>
+                Stock out can’t exceed what’s on hand; an adjustment takes a
+                signed delta (+5 found / −3 damaged) and never drops below
+                zero.
+              </p>
+
+              <div class="form-actions">
+                <button
+                  class="btn btn--primary"
+                  type="submit"
+                  [disabled]="movSubmitting()"
+                  [attr.aria-busy]="movSubmitting()"
+                >
+                  <span>Record Movement</span>
+                  @if (movSubmitting()) {
+                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                  } @else {
+                    <i class="fa-solid fa-check"></i>
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </article>
+
+        <!-- ============ Movement log ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
+            <h2 class="widget__title">Movement Log</h2>
+            <div class="widget__action">
+              <span class="badge-count">{{ movementsCount() }}</span>
+            </div>
+          </header>
+
+          <div class="widget__body">
+            @if (movementsLoading()) {
+              <p class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Loading movements…
+              </p>
+            } @else if (movementsError()) {
+              <div class="form-alert form-alert--error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ movementsError() }}</span>
+              </div>
+              <button
+                type="button"
+                class="btn-mini"
+                (click)="retryMovements()"
+              >
+                <i class="fa-solid fa-rotate-right"></i>
+                Try again
+              </button>
+            } @else {
+              <p class="ws__count">
+                Showing {{ movements().length }} of {{ movementsCount() }}
+                movements
+                @if (hasMovFilters()) {
+                  (filtered)
+                }
+              </p>
+
+              @for (m of movements(); track m.id) {
+                <div class="list-row">
+                  <span class="list-row__icon">
+                    <i [class]="typeIcon(m.type)"></i>
+                  </span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{ m.item }}</strong>
+                      <span [class]="typeChip(m.type)">
+                        {{ typeLabel(m.type) }}
+                      </span>
+                    </p>
+                    <p class="list-row__sub">
+                      {{ fmtDay(m.date) }} · {{ m.by }}
+                      @if (m.reference) {
+                        · {{ m.reference }}
+                      }
+                    </p>
+                    @if (m.notes) {
+                      <p class="list-row__meta">
+                        <i class="fa-solid fa-note-sticky"></i>
+                        {{ m.notes }}
+                      </p>
+                    }
+                  </div>
+                  <div class="list-row__side">
+                    <span class="list-row__money"
+                      >{{ qtyLabel(m) }} {{ m.unit }}</span
+                    >
+                    @if (m.unitCost != null && m.unitCost > 0) {
+                      <span class="chip chip--neutral"
+                        >{{ fmtMoney(m.unitCost) }}/{{ m.unit }}</span
+                      >
+                    }
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                  @if (hasMovFilters()) {
+                    No movements match these filters — adjust or reset them.
+                  } @else {
+                    No movements recorded yet — movements appear here as
+                    stock moves.
+                  }
+                </p>
+              }
+            }
+          </div>
+        </article>
+      </div>
+    }
+
+    @case ('categories') {
+      <!-- ============ Categories (read-only) ============ -->
+      <article class="widget">
+        <header class="widget__head">
+          <i class="fa-solid fa-folder-tree widget__icon"></i>
+          <h2 class="widget__title">Categories</h2>
+          <div class="widget__action">
+            <span class="badge-count">{{ categories().length }}</span>
+          </div>
+        </header>
+
+        <div class="widget__body">
+          @if (categoriesLoading()) {
+            <p class="empty-state">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              Loading categories…
+            </p>
+          } @else if (categoriesError()) {
+            <div class="form-alert form-alert--error">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span>{{ categoriesError() }}</span>
+            </div>
+            <button
+              type="button"
+              class="btn-mini"
+              (click)="retryCategories()"
+            >
+              <i class="fa-solid fa-rotate-right"></i>
+              Try again
+            </button>
+          } @else {
+            <p class="ws__note">
+              <i class="fa-solid fa-lock" aria-hidden="true"></i>
+              <span>Categories are managed with the farm setup — this list is read-only.</span>
+            </p>
+
+            @for (category of categories(); track category.id) {
+              <div class="list-row">
+                <span class="list-row__icon">
+                  <i class="fa-solid fa-folder"></i>
+                </span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">{{ category.name }}</strong>
+                    <span class="chip chip--neutral"
+                      >{{ category.itemCount }} item(s)</span
+                    >
+                  </p>
+                  <p class="list-row__sub">
+                    @if (category.department) {
+                      {{ category.department }}
+                    } @else {
+                      No department
+                    }
+                  </p>
+                  @if (category.description) {
+                    <p class="list-row__meta">
+                      <i class="fa-solid fa-align-left"></i>
+                      {{ category.description }}
+                    </p>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <p class="empty-state">
+                <i class="fa-solid fa-folder-open"></i>
+                No categories yet.
+              </p>
+            }
+          }
+        </div>
+      </article>
+    }
+  }
+</section>

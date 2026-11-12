@@ -82,6 +82,13 @@ export const routes: Routes = [
             (m) => m.SalesScreen,
           ),
       },
+      {
+        path: 'inventory',
+        loadComponent: () =>
+          import('./features/inventory/inventory-screen/inventory-screen').then(
+            (m) => m.InventoryScreen,
+          ),
+      },
     ],
   },
 
@@ -127,6 +134,20 @@ export const routes: Routes = [
           import(
             './features/supervisor/transactions/supervisor-transactions'
           ).then((m) => m.SupervisorTransactions),
+      },
+      {
+        path: 'sales',
+        loadComponent: () =>
+          import('./features/sales/sales-screen/sales-screen').then(
+            (m) => m.SalesScreen,
+          ),
+      },
+      {
+        path: 'inventory',
+        loadComponent: () =>
+          import('./features/inventory/inventory-screen/inventory-screen').then(
+            (m) => m.InventoryScreen,
+          ),
       },
       {
         path: 'workers',
