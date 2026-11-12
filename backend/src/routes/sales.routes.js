@@ -8,6 +8,9 @@ const router = Router();
 const PAYMENT_METHODS = ['cash', 'mobile_money', 'bank_transfer', 'other'];
 const PAYMENT_STATUSES = ['paid', 'pending', 'partial'];
 
+/* Sales + customers are owner AND supervisor territory (Phase 3A
+   extension: supervisors get the full screen, record sales included). */
+
 /** Error that should surface as its own HTTP status (e.g. 409 stock). */
 function httpError(status, message) {
   const err = new Error(message);
@@ -20,7 +23,7 @@ function httpError(status, message) {
  * customers and the inventory items that can be linked to a line
  * (linking a line to an item deducts stock when the sale is recorded).
  */
-router.get('/options', requireAuth, requireRole('owner'), async (_req, res, next) => {
+router.get('/options', requireAuth, requireRole('owner', 'supervisor'), async (_req, res, next) => {
   try {
     const [customers, items] = await Promise.all([
       query(
@@ -65,7 +68,7 @@ router.get('/options', requireAuth, requireRole('owner'), async (_req, res, next
  * status (paid|pending|partial), method (cash|…), limit (1–500, def 20).
  * `count` is the full match count (rows are limit-truncated).
  */
-router.get('/', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.get('/', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const q = req.query;
     const where = [];
@@ -148,7 +151,7 @@ router.get('/', requireAuth, requireRole('owner'), async (req, res, next) => {
  * line item, and the stock movements the sale produced (linked lines
  * carry their receipt number as the reference).
  */
-router.get('/:id', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.get('/:id', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const id = String(req.params.id);
     if (!/^\d+$/.test(id)) {
@@ -244,7 +247,7 @@ router.get('/:id', requireAuth, requireRole('owner'), async (req, res, next) => 
  * lines (no itemId) never touch stock. A new customer name creates
  * the customer row when no customerId is given.
  */
-router.post('/', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.post('/', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const body = req.body ?? {};
     const lines = Array.isArray(body.lines) ? body.lines : [];

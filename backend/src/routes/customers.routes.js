@@ -69,7 +69,7 @@ const SELECT_CUSTOMER = `
  * everyone on file, newest contacts included, with how many sales each
  * one has on record.
  */
-router.get('/', requireAuth, requireRole('owner'), async (_req, res, next) => {
+router.get('/', requireAuth, requireRole('owner', 'supervisor'), async (_req, res, next) => {
   try {
     const { rows } = await query(
       `${SELECT_CUSTOMER} ORDER BY c.customer_name`,
@@ -81,7 +81,7 @@ router.get('/', requireAuth, requireRole('owner'), async (_req, res, next) => {
 });
 
 /** POST /api/customers — add a customer up front (no sale needed). */
-router.post('/', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.post('/', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const { errors, out } = validate(req.body ?? {}, false);
     if (errors.length) {
@@ -110,7 +110,7 @@ router.post('/', requireAuth, requireRole('owner'), async (req, res, next) => {
 });
 
 /** PATCH /api/customers/:id — edit name and contact details. */
-router.patch('/:id', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.patch('/:id', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const id = String(req.params.id);
     if (!/^\d+$/.test(id)) {
@@ -166,7 +166,7 @@ router.patch('/:id', requireAuth, requireRole('owner'), async (req, res, next) =
  * sales reference them: their name must stay attached to the history
  * (the FK would otherwise detach those sales to "Walk-in").
  */
-router.delete('/:id', requireAuth, requireRole('owner'), async (req, res, next) => {
+router.delete('/:id', requireAuth, requireRole('owner', 'supervisor'), async (req, res, next) => {
   try {
     const id = String(req.params.id);
     if (!/^\d+$/.test(id)) {
