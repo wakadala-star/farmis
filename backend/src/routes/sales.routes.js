@@ -59,34 +59,170 @@ router.get('/options', requireAuth, requireRole('owner'), async (_req, res, next
 });
 
 /**
- * GET /api/sales — recent sales (newest first), for the dashboard's
- * Recent Sales table outside the summary bundle.
+ * GET /api/sales — the sales list (newest first). The dashboard asks
+ * for the default 20 most recent; the Sales screen passes filters and
+ * a bigger limit. Query: dateFrom, dateTo (YYYY-MM-DD, inclusive),
+ * status (paid|pending|partial), method (cash|…), limit (1–500, def 20).
+ * `count` is the full match count (rows are limit-truncated).
  */
-router.get('/', requireAuth, requireRole('owner'), async (_req, res, next) => {
+router.get('/', requireAuth, requireRole('owner'), async (req, res, next) => {
   try {
-    const { rows } = await query(
-      `SELECT sa.sale_id, sa.sale_date, sa.total_amount, sa.payment_method,
-              sa.payment_status, c.customer_name,
-              (SELECT string_agg(si.item_description, ' + ' ORDER BY si.sale_item_id)
-                 FROM (SELECT item_description, sale_item_id
-                         FROM sale_items WHERE sale_id = sa.sale_id
-                        ORDER BY sale_item_id LIMIT 2) si) AS items
-         FROM sales sa
-         LEFT JOIN customers c ON c.customer_id = sa.customer_id
-        ORDER BY sa.sale_date DESC, sa.sale_id DESC
-        LIMIT 20`,
-    );
+    const q = req.query;
+    const where = [];
+    const params = [];
+
+    const pushDate = (value, col, op) => {
+      if (value == null || value === '') return;
+      if (!isIsoDate(String(value))) {
+        return res.status(400).json({ ok: false, message: 'Dates must be YYYY-MM-DD.' });
+      }
+      params.push(String(value));
+      // Compare as calendar days: `sale_date <= '2026-11-05'` would drop
+      // every sale after midnight on the last day.
+      where.push(`${col}::date ${op} $${params.length}`);
+    };
+    if (pushDate(q.dateFrom, 'sa.sale_date', '>=')) return undefined;
+    if (pushDate(q.dateTo, 'sa.sale_date', '<=')) return undefined;
+
+    if (q.status != null && q.status !== '') {
+      if (!PAYMENT_STATUSES.includes(String(q.status))) {
+        return res.status(400).json({ ok: false, message: 'Unknown payment status.' });
+      }
+      params.push(String(q.status));
+      where.push(`sa.payment_status = $${params.length}`);
+    }
+    if (q.method != null && q.method !== '') {
+      if (!PAYMENT_METHODS.includes(String(q.method))) {
+        return res.status(400).json({ ok: false, message: 'Unknown payment method.' });
+      }
+      params.push(String(q.method));
+      where.push(`sa.payment_method = $${params.length}`);
+    }
+
+    const limitRaw = Number(q.limit ?? 20);
+    const limit = Number.isFinite(limitRaw)
+      ? Math.min(Math.max(Math.trunc(limitRaw), 1), 500)
+      : 20;
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [list, count] = await Promise.all([
+      query(
+        `SELECT sa.sale_id, sa.sale_date, sa.receipt_number, sa.total_amount,
+                sa.payment_method, sa.payment_status, c.customer_name,
+                (SELECT string_agg(si.item_description, ' + ' ORDER BY si.sale_item_id)
+                   FROM (SELECT item_description, sale_item_id
+                           FROM sale_items WHERE sale_id = sa.sale_id
+                          ORDER BY sale_item_id LIMIT 2) si) AS items
+           FROM sales sa
+           LEFT JOIN customers c ON c.customer_id = sa.customer_id
+           ${whereSql}
+          ORDER BY sa.sale_date DESC, sa.sale_id DESC
+          LIMIT ${limit}`,
+        params,
+      ),
+      query(`SELECT count(*)::int AS n FROM sales sa ${whereSql}`, params),
+    ]);
+
     res.json({
       ok: true,
-      sales: rows.map((r) => ({
+      count: count.rows[0].n,
+      sales: list.rows.map((r) => ({
         id: String(r.sale_id),
         date: toIsoDate(r.sale_date),
+        receipt: r.receipt_number,
         customer: r.customer_name ?? 'Walk-in',
         item: r.items ?? '—',
         amount: Number(r.total_amount),
         method: r.payment_method,
         status: r.payment_status,
       })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/sales/:id — sale detail for the Sales screen's expandable
+ * row: header (receipt, customer, seller, method/status, notes), every
+ * line item, and the stock movements the sale produced (linked lines
+ * carry their receipt number as the reference).
+ */
+router.get('/:id', requireAuth, requireRole('owner'), async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({ ok: false, message: 'Invalid sale id.' });
+    }
+
+    const { rows } = await query(
+      `SELECT sa.sale_id, sa.receipt_number, sa.sale_date, sa.total_amount,
+              sa.payment_method, sa.payment_status, sa.notes,
+              c.customer_id, c.customer_name, c.phone AS customer_phone,
+              u.first_name || ' ' || u.last_name AS seller
+         FROM sales sa
+         LEFT JOIN customers c ON c.customer_id = sa.customer_id
+         JOIN users u ON u.user_id = sa.user_id
+        WHERE sa.sale_id = $1`,
+      [id],
+    );
+    const sale = rows[0];
+    if (!sale) {
+      return res.status(404).json({ ok: false, message: 'Sale not found.' });
+    }
+
+    const [items, stock] = await Promise.all([
+      query(
+        `SELECT si.item_description, si.quantity, si.unit_price, si.subtotal,
+                si.item_id, ii.item_name, ii.unit
+           FROM sale_items si
+           LEFT JOIN inventory_items ii ON ii.item_id = si.item_id
+          WHERE si.sale_id = $1
+          ORDER BY si.sale_item_id`,
+        [id],
+      ),
+      query(
+        `SELECT st.quantity, st.unit_cost, st.transaction_date,
+                ii.item_name, ii.unit
+           FROM stock_transactions st
+           JOIN inventory_items ii ON ii.item_id = st.item_id
+          WHERE st.reference_number = $1
+          ORDER BY st.transaction_id`,
+        [sale.receipt_number],
+      ),
+    ]);
+
+    res.json({
+      ok: true,
+      sale: {
+        id: String(sale.sale_id),
+        receipt: sale.receipt_number,
+        date: toIsoDate(sale.sale_date),
+        customer: sale.customer_name ?? 'Walk-in',
+        customerId: sale.customer_id != null ? String(sale.customer_id) : null,
+        customerPhone: sale.customer_phone ?? '',
+        seller: sale.seller,
+        method: sale.payment_method,
+        status: sale.payment_status,
+        notes: sale.notes ?? '',
+        total: Number(sale.total_amount),
+        items: items.rows.map((r) => ({
+          description: r.item_description,
+          quantity: Number(r.quantity),
+          unitPrice: Number(r.unit_price),
+          subtotal: Number(r.subtotal),
+          linked: r.item_id != null,
+          item: r.item_name ?? null,
+          unit: r.unit ?? '',
+        })),
+        stockMovements: stock.rows.map((r) => ({
+          item: r.item_name,
+          quantity: Number(r.quantity),
+          unit: r.unit,
+          unitCost: Number(r.unit_cost ?? 0),
+          date: toIsoDate(r.transaction_date),
+        })),
+      },
     });
   } catch (err) {
     next(err);
@@ -196,13 +332,22 @@ router.post('/', requireAuth, requireRole('owner'), async (req, res, next) => {
     try {
       await client.query('BEGIN');
 
-      /* customer row (created inside the sale's transaction) */
+      /* customer: existing id → verify; typed name → reuse the record
+         on file (case-insensitive) or create it; nothing → walk-in */
       if (customerId == null && customerName) {
-        const ins = await client.query(
-          `INSERT INTO customers (customer_name) VALUES ($1) RETURNING customer_id`,
+        const dup = await client.query(
+          'SELECT customer_id FROM customers WHERE lower(customer_name) = lower($1)',
           [customerName],
         );
-        customerId = ins.rows[0].customer_id;
+        if (dup.rows.length > 0) {
+          customerId = dup.rows[0].customer_id;
+        } else {
+          const ins = await client.query(
+            `INSERT INTO customers (customer_name) VALUES ($1) RETURNING customer_id`,
+            [customerName],
+          );
+          customerId = ins.rows[0].customer_id;
+        }
       } else if (customerId != null) {
         const exists = await client.query('SELECT 1 FROM customers WHERE customer_id = $1', [
           customerId,

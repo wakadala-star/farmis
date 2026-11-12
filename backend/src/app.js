@@ -13,6 +13,7 @@ const ownerRoutes = require('./routes/owner.routes');
 const salesRoutes = require('./routes/sales.routes');
 const cropsRoutes = require('./routes/crops.routes');
 const livestockRoutes = require('./routes/livestock.routes');
+const customersRoutes = require('./routes/customers.routes');
 const expensesRoutes = require('./routes/expenses.routes');
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/owner', ownerRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/crops', cropsRoutes);
 app.use('/api/livestock', livestockRoutes);
+app.use('/api/customers', customersRoutes);
 app.use('/api/expenses', expensesRoutes);
 
 // Unknown routes → JSON 404 (not an HTML page).

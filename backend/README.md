@@ -70,9 +70,14 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/reports/operations` | supervisor | Compute + store the report over department data from `periodStart` |
 | GET    | `/api/owner/summary` | owner     | Dashboard aggregate — stat cards, 6-month sales series, recent sales, low-stock rows, pending approvals, tasks due soon, recent activity feed |
 | GET    | `/api/owner/department/:code` | owner | One management page (`crops`\|`livestock`) — meta numbers, dept-scoped low stock, tasks due soon, latest entries |
-| GET    | `/api/sales`        | owner       | Recent sales, newest first (customer + line summary) |
+| GET    | `/api/sales`        | owner       | Sales list, newest first — optional filters `dateFrom`/`dateTo` (inclusive days), `status`, `method`, `limit` (1–500, default 20); `count` = full match count |
+| GET    | `/api/sales/:id`    | owner       | Sale detail — receipt, customer, seller, line items, and the stock movements the sale produced |
 | GET    | `/api/sales/options`| owner       | Record Sale form pickers — customers + inventory items (stock levels) |
 | POST   | `/api/sales`        | owner       | Record a sale — total recomputed server-side; lines linked to inventory deduct stock in one transaction (409 when insufficient); free-text lines don't touch stock |
+| GET    | `/api/customers`    | owner       | Customer list with per-customer sale counts |
+| POST   | `/api/customers`    | owner       | Add a customer (name required; phone/email/address optional) |
+| PATCH  | `/api/customers/:id`| owner       | Edit a customer's name and contact details |
+| DELETE | `/api/customers/:id`| owner       | Remove a customer — **409** while they have sales (history keeps the name attached) |
 | GET    | `/api/crops`        | owner       | Crop registry, newest first |
 | POST   | `/api/crops`        | owner       | Add a crop (name, optional variety/area/planted date/notes) |
 | GET    | `/api/livestock`    | owner       | Livestock registry, newest first |
