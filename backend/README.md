@@ -57,7 +57,8 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/attendance/clock-out` | worker   | Close the open shift → awaits supervisor approval |
 | GET    | `/api/attendance/department` | supervisor | Team clock records, newest first (approval feed + dashboard tiles) |
 | POST   | `/api/attendance/:id/decision` | supervisor | Approve/reject a clock-out awaiting approval (pending only, own department) |
-| GET    | `/api/entries`     | required        | Department feed, newest first (owner: every department) |
+| GET    | `/api/entries`     | required        | Activity feed, newest first (owner: every department, others: own) — filters `dept` (owner picks any; others locked to their own, foreign → 403), `dateFrom`/`dateTo` (inclusive days), `activity` (exact), `q` (subject/place/notes search), `limit` (1–500, default 100) + `count` + `stats` (total / this week Mon-start / distinct activities) |
+| GET    | `/api/entries/activities` | required | Distinct activity names for the feed filter, in the caller's scope |
 | POST   | `/api/entries`     | worker          | Record a field/livestock activity (department from session) |
 | GET    | `/api/transactions/mine` | required  | Own credit requests, newest first |
 | POST   | `/api/transactions`| worker          | Request credit for a farm purchase (amount > 0, reason ≤ 200 chars) |
