@@ -108,6 +108,12 @@ export class SupervisorLayout {
           sub: 'Track your department’s items, movements and reorder alerts.',
           mob: 'Stock & movements',
         };
+      case '/supervisor/activities':
+        return {
+          title: 'Farm Activities',
+          sub: 'Your department’s field entries — filter by date, activity or search.',
+          mob: 'Department field entries',
+        };
       case '/supervisor/workers':
         return {
           title: 'Workers',
@@ -127,6 +133,7 @@ export class SupervisorLayout {
     { label: 'Dashboard', icon: 'fa-solid fa-gauge-high', link: '/supervisor/dashboard' },
     { label: 'Tasks', icon: 'fa-solid fa-list-check', link: '/supervisor/tasks' },
     { label: 'Reports', icon: 'fa-solid fa-file-lines', link: '/supervisor/reports' },
+    { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check', link: '/supervisor/activities' },
     { label: 'Attendance', icon: 'fa-solid fa-clock', link: '/supervisor/attendance' },
     { label: 'Transactions', icon: 'fa-solid fa-money-bill-transfer', link: '/supervisor/transactions' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/supervisor/sales' },

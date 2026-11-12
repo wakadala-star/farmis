@@ -96,6 +96,13 @@ export const routes: Routes = [
             (m) => m.FinanceScreen,
           ),
       },
+      {
+        path: 'activities',
+        loadComponent: () =>
+          import(
+            './features/activities/activities-screen/activities-screen'
+          ).then((m) => m.ActivitiesScreen),
+      },
     ],
   },
 
@@ -155,6 +162,13 @@ export const routes: Routes = [
           import('./features/inventory/inventory-screen/inventory-screen').then(
             (m) => m.InventoryScreen,
           ),
+      },
+      {
+        path: 'activities',
+        loadComponent: () =>
+          import(
+            './features/activities/activities-screen/activities-screen'
+          ).then((m) => m.ActivitiesScreen),
       },
       {
         path: 'workers',

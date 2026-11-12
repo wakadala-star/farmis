@@ -93,6 +93,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Month totals, the expense ledger and credit decisions.`,
           mob: 'Expenses & month totals',
         };
+      case '/activities':
+        return {
+          title: 'Farm Activities',
+          sub: `Welcome back, ${name}! Every field entry across the farm, filterable.`,
+          mob: 'Field entries & activity',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -111,7 +117,7 @@ export class OwnerLayout {
     { label: 'Procurement', icon: 'fa-solid fa-basket-shopping' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/sales' },
     { label: 'Finance', icon: 'fa-solid fa-wallet', link: '/finance' },
-    { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check' },
+    { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check', link: '/activities' },
     { label: 'Reports', icon: 'fa-solid fa-chart-column' },
     { label: 'Settings', icon: 'fa-solid fa-gear' },
   ];

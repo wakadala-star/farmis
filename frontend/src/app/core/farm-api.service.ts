@@ -389,6 +389,24 @@ export interface MonthFinance {
   byCategory: { category: string; total: number; count: number }[];
 }
 
+/* ---------------- Phase 3D: Farm Activities screen ---------------- */
+
+/** Filter for GET /api/entries (all optional). */
+export interface EntryFilter {
+  dept?: string; // crops | livestock — owner picks any; others are locked
+  dateFrom?: string; // YYYY-MM-DD, inclusive
+  dateTo?: string;
+  activity?: string; // exact activity name
+  q?: string; // subject/place/notes search
+}
+
+/** Tile numbers GET /api/entries reports with the list. */
+export interface EntryStats {
+  total: number; // within scope + filters
+  thisWeek: number; // entries dated in the Mon-start current week
+  activities: number; // distinct activity names in scope + filters
+}
+
 /** A row of GET /api/users as the owner's staff list shows it. */
 export type StaffRec = ApiUser;
 
@@ -1129,6 +1147,63 @@ export class FarmApiService {
     decision: 'approved' | 'rejected',
   ): Promise<ActionResult> {
     return this.send('POST', `/transactions/${id}/decision`, { decision });
+  }
+
+  /* ---------------- Phase 3D: Farm Activities screen ---------------- */
+
+  /** Activity feed (GET /entries, capped at 200 rows) with tile stats. */
+  async listEntries(filter: EntryFilter): Promise<{
+    ok: boolean;
+    message: string;
+    count: number;
+    stats: EntryStats;
+    entries: DataEntryRec[];
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filter.dept) params.set('dept', filter.dept);
+      if (filter.dateFrom) params.set('dateFrom', filter.dateFrom);
+      if (filter.dateTo) params.set('dateTo', filter.dateTo);
+      if (filter.activity) params.set('activity', filter.activity);
+      if (filter.q) params.set('q', filter.q);
+      params.set('limit', '200');
+      const res = await this.get<{
+        count: number;
+        stats: EntryStats;
+        entries: DataEntryRec[];
+      }>(`/entries?${params.toString()}`);
+      return {
+        ok: true,
+        message: '',
+        count: res.count,
+        stats: res.stats,
+        entries: res.entries,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        message: apiMessage(err),
+        count: 0,
+        stats: { total: 0, thisWeek: 0, activities: 0 },
+        entries: [],
+      };
+    }
+  }
+
+  /** Distinct activity names for the feed filter (GET /entries/activities). */
+  async listEntryActivities(): Promise<{
+    ok: boolean;
+    message: string;
+    activities: string[];
+  }> {
+    try {
+      const res = await this.get<{ activities: string[] }>(
+        '/entries/activities',
+      );
+      return { ok: true, message: '', activities: res.activities ?? [] };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), activities: [] };
+    }
   }
 
   /* ---------------- internals ---------------- */

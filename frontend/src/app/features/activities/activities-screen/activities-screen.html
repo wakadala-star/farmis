@@ -1,0 +1,208 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Every field and livestock entry the team files, newest first.
+      Workers record activities on their own <strong>Data Entry</strong>
+      screen — this feed is read-only.
+      @if (isOwner) {
+        Owners can filter across departments; supervisors only ever see
+        their own.
+      }
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ============ Tiles ============ -->
+  <div class="meta-row" aria-label="Activity feed at a glance">
+    <div class="meta-tile meta-tile--blue">
+      <span class="meta-tile__icon"
+        ><i class="fa-solid fa-clipboard-list"></i
+      ></span>
+      <div class="meta-tile__body">
+        <span class="meta-tile__value">{{ stats().total }}</span>
+        <span class="meta-tile__label">Entries in view</span>
+        <span class="meta-tile__hint">
+          {{ count() }} returned · within scope + filters
+        </span>
+      </div>
+    </div>
+    <div class="meta-tile meta-tile--green">
+      <span class="meta-tile__icon"
+        ><i class="fa-solid fa-calendar-day"></i
+      ></span>
+      <div class="meta-tile__body">
+        <span class="meta-tile__value">{{ stats().thisWeek }}</span>
+        <span class="meta-tile__label">Filed this week</span>
+        <span class="meta-tile__hint">Monday-start week, current view</span>
+      </div>
+    </div>
+    <div class="meta-tile meta-tile--amber">
+      <span class="meta-tile__icon"><i class="fa-solid fa-tags"></i></span>
+      <div class="meta-tile__body">
+        <span class="meta-tile__value">{{ stats().activities }}</span>
+        <span class="meta-tile__label">Distinct activities</span>
+        <span class="meta-tile__hint">Activity names in the current view</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Filters ============ -->
+  <div class="filter-bar" role="group" aria-label="Filter activities">
+    @if (isOwner) {
+      <div class="filter-bar__field">
+        <label for="act-dept">Department</label>
+        <select
+          id="act-dept"
+          class="select"
+          [value]="filterDept()"
+          (change)="onFilterDept($event)"
+        >
+          <option value="">All departments</option>
+          <option value="crops">Crops</option>
+          <option value="livestock">Livestock</option>
+        </select>
+      </div>
+    }
+    <div class="filter-bar__field">
+      <label for="act-from">From</label>
+      <input
+        id="act-from"
+        type="date"
+        class="input"
+        [value]="filterFrom()"
+        (change)="onFilterFrom($event)"
+      />
+    </div>
+    <div class="filter-bar__field">
+      <label for="act-to">To</label>
+      <input
+        id="act-to"
+        type="date"
+        class="input"
+        [value]="filterTo()"
+        (change)="onFilterTo($event)"
+      />
+    </div>
+    <div class="filter-bar__field">
+      <label for="act-activity">Activity</label>
+      <select
+        id="act-activity"
+        class="select"
+        [value]="filterActivity()"
+        (change)="onFilterActivity($event)"
+      >
+        <option value="">All activities</option>
+        @for (activity of activities(); track activity) {
+          <option [value]="activity">{{ activity }}</option>
+        }
+      </select>
+    </div>
+    <div class="filter-bar__field">
+      <label for="act-q">Search</label>
+      <input
+        id="act-q"
+        type="search"
+        class="input"
+        placeholder="Subject, place or notes"
+        [value]="filterQ()"
+        (change)="onFilterQ($event)"
+      />
+    </div>
+    @if (hasFilters()) {
+      <button type="button" class="btn-mini" (click)="resetFilters()">
+        <i class="fa-solid fa-rotate-left"></i>
+        Reset
+      </button>
+    }
+  </div>
+
+  <!-- ============ Feed ============ -->
+  <article class="widget">
+    <header class="widget__head">
+      <i class="fa-solid fa-calendar-check widget__icon"></i>
+      <h2 class="widget__title">Activity Feed</h2>
+      <div class="widget__action">
+        <span class="badge-count">{{ count() }}</span>
+      </div>
+    </header>
+
+    <div class="widget__body">
+      @if (loading()) {
+        <p class="empty-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          Loading entries…
+        </p>
+      } @else if (loadError()) {
+        <div class="form-alert form-alert--error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ loadError() }}</span>
+        </div>
+        <button type="button" class="btn-mini" (click)="retry()">
+          <i class="fa-solid fa-rotate-right"></i>
+          Try again
+        </button>
+      } @else {
+        <p class="ws__count">
+          Showing {{ entries().length }} of {{ count() }} entries
+          @if (hasFilters()) {
+            (filtered)
+          }
+        </p>
+
+        @for (entry of entries(); track entry.id) {
+          <div class="list-row">
+            <span [class]="deptIconClass(entry.dept)">
+              <i [class]="deptIcon(entry.dept)"></i>
+            </span>
+            <div class="list-row__main">
+              <p class="list-row__title-row">
+                <strong class="list-row__title">{{ entry.subject }}</strong>
+                @if (isOwner && deptLabel(entry.dept)) {
+                  <span class="chip chip--neutral">{{
+                    deptLabel(entry.dept)
+                  }}</span>
+                }
+              </p>
+              <p class="list-row__sub" [title]="entry.activity">
+                {{ entry.activity }} · {{ entry.place }}
+              </p>
+              <p class="list-row__meta">
+                {{ entry.worker }} · {{ fmtDay(entry.date) }} ·
+                {{ entry.measure }}
+              </p>
+              @if (entry.notes) {
+                <p class="list-row__meta">
+                  <i class="fa-solid fa-note-sticky"></i>
+                  {{ entry.notes }}
+                </p>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-state">
+            <i class="fa-solid fa-calendar-xmark"></i>
+            @if (hasFilters()) {
+              No entries match these filters — adjust or reset them.
+            } @else {
+              No field entries yet — workers file them on their Data Entry
+              screen.
+            }
+          </p>
+        }
+      }
+    </div>
+  </article>
+</section>
