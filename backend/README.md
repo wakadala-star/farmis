@@ -62,13 +62,15 @@ Requires the PostgreSQL service running locally with the credentials in
 | GET    | `/api/transactions/mine` | required  | Own credit requests, newest first |
 | POST   | `/api/transactions`| worker          | Request credit for a farm purchase (amount > 0, reason ≤ 200 chars) |
 | GET    | `/api/transactions/department` | supervisor | Department credit requests, newest first (pending + decided) |
-| POST   | `/api/transactions/:id/decision` | supervisor | Approve/reject a pending request (own department, pending only) |
+| GET    | `/api/transactions`| owner       | Farm-wide credit requests across departments, newest first (pending + decided) |
+| POST   | `/api/transactions/:id/decision` | owner/supervisor | Approve/reject a pending request — **409** once decided; supervisor: own department only, owner: farm-wide |
 | GET    | `/api/reports/mine`| required        | Own daily reports, newest first            |
 | POST   | `/api/reports`     | worker          | File a daily report (free-text task, 1–24 h) |
 | GET    | `/api/reports/department` | supervisor | Daily reports filed by the team, newest first |
 | GET    | `/api/reports/operations` | supervisor | Generated operations-report history (8 label/value lines) |
 | POST   | `/api/reports/operations` | supervisor | Compute + store the report over department data from `periodStart` |
 | GET    | `/api/owner/summary` | owner     | Dashboard aggregate — stat cards, 6-month sales series, recent sales, low-stock rows, pending approvals, tasks due soon, recent activity feed |
+| GET    | `/api/owner/finance` | owner     | Month summary (`?month=YYYY-MM`, default current) — sales/expenses/net this month vs last, expense breakdown by category |
 | GET    | `/api/owner/department/:code` | owner | One management page (`crops`\|`livestock`) — meta numbers, dept-scoped low stock, tasks due soon, latest entries |
 | GET    | `/api/sales`        | owner/supervisor| Sales list, newest first — optional filters `dateFrom`/`dateTo` (inclusive days), `status`, `method`, `limit` (1–500, default 20); `count` = full match count |
 | GET    | `/api/sales/:id`    | owner/supervisor| Sale detail — receipt, customer, seller, line items, and the stock movements the sale produced |
@@ -89,8 +91,10 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/crops`        | owner       | Add a crop (name, optional variety/area/planted date/notes) |
 | GET    | `/api/livestock`    | owner       | Livestock registry, newest first |
 | POST   | `/api/livestock`    | owner       | Add an animal record (species, optional breed/quantity/location/acquired date/notes) |
-| GET    | `/api/expenses`     | owner       | Expense ledger, newest first |
+| GET    | `/api/expenses`     | owner       | Expense ledger, newest first — filters `dateFrom`/`dateTo` (inclusive days), `category`, `method`, `q` (description search), `limit` (1–500, default 50) + `count` |
 | POST   | `/api/expenses`     | owner       | Record an expense (category, description, amount > 0, date, payment method) |
+| PATCH  | `/api/expenses/:id` | owner       | Edit an expense's category, description, amount, date or payment method |
+| DELETE | `/api/expenses/:id` | owner       | Remove an expense — hard delete (nothing references expense rows) |
 
 All responses are JSON: `{ ok: boolean, message: string, ... }`.
 

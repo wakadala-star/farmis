@@ -70,6 +70,24 @@ router.get('/department', requireAuth, requireRole('supervisor'), async (req, re
 });
 
 /**
+ * GET /api/transactions — the owner's farm-wide credit-request list
+ * (Phase 3C: every department, pending + decided; the screen splits
+ * them client-side like the supervisor's feed).
+ */
+router.get('/', requireAuth, requireRole('owner'), async (_req, res, next) => {
+  try {
+    const { rows } = await query(
+      `${SELECT_TX}
+        ORDER BY cr.created_at DESC, cr.request_id DESC
+        LIMIT 200`,
+    );
+    res.json({ ok: true, transactions: rows.map(toRecord) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/transactions — worker submits a credit request.
  * Body: { amount, reason }.
  */
@@ -117,11 +135,12 @@ router.post('/', requireAuth, requireRole('worker'), async (req, res, next) => {
 });
 
 /**
- * POST /api/transactions/:id/decision — supervisor approves or rejects
- * a pending request (own department only).
- * Body: { decision: 'approved' | 'rejected' }.
+ * POST /api/transactions/:id/decision — approve or reject a pending
+ * request. The supervisor decides for their own department only; the
+ * owner (Phase 3C) decides farm-wide. Not-yet-decided rows only — a
+ * second decision answers 409 whoever gets there first.
  */
-router.post('/:id/decision', requireAuth, requireRole('supervisor'), async (req, res, next) => {
+router.post('/:id/decision', requireAuth, requireRole('supervisor', 'owner'), async (req, res, next) => {
   try {
     const id = String(req.params.id);
     if (!/^\d+$/.test(id)) return res.status(400).json({ ok: false, message: 'Invalid request id.' });
@@ -131,16 +150,24 @@ router.post('/:id/decision', requireAuth, requireRole('supervisor'), async (req,
       return res.status(400).json({ ok: false, message: 'Decision must be approved or rejected.' });
     }
 
+    const isOwner = req.user.role === 'owner';
     const { rows } = await query(
-      `${SELECT_TX}
-        WHERE cr.request_id = $1::bigint
-          AND (cr.department_id = $2
-               OR (cr.department_id IS NULL AND u.department_id = $2))`,
-      [id, req.user.departmentId],
+      isOwner
+        ? `${SELECT_TX} WHERE cr.request_id = $1::bigint`
+        : `${SELECT_TX}
+            WHERE cr.request_id = $1::bigint
+              AND (cr.department_id = $2
+                   OR (cr.department_id IS NULL AND u.department_id = $2))`,
+      isOwner ? [id] : [id, req.user.departmentId],
     );
     const rec = rows[0];
     if (!rec) {
-      return res.status(404).json({ ok: false, message: 'Credit request not found in your department.' });
+      return res.status(404).json({
+        ok: false,
+        message: isOwner
+          ? 'Credit request not found.'
+          : 'Credit request not found in your department.',
+      });
     }
     if (rec.status !== 'pending') {
       return res.status(409).json({ ok: false, message: 'This request has already been decided.' });

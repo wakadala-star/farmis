@@ -215,6 +215,99 @@ router.get('/summary', requireAuth, requireRole('owner'), async (_req, res, next
 });
 
 /**
+ * GET /api/owner/finance?month=YYYY-MM — the Finance screen's month
+ * summary (Phase 3C): sales, expenses and net for the selected month,
+ * the previous month alongside for the trend, and the expense
+ * breakdown by category. Defaults to the current month; owner only.
+ */
+router.get('/finance', requireAuth, requireRole('owner'), async (req, res, next) => {
+  try {
+    const month = req.query.month == null || req.query.month === ''
+      ? null
+      : String(req.query.month);
+    if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ ok: false, message: 'Month must be YYYY-MM.' });
+    }
+
+    // Range anchors: the selected month's 1st, or the server's current
+    // month (same clock as the dashboard's summaries); prev = −1 month.
+    const params = [];
+    let cur = 'date_trunc(\'month\', now())::date';
+    if (month) {
+      params.push(`${month}-01`);
+      cur = '$1::date';
+    }
+    const prev = `(${cur} - interval '1 month')`;
+
+    const [totals, expenses, byCategory] = await Promise.all([
+      query(
+        `SELECT to_char(${cur}, 'YYYY-MM') AS cur_label,
+                to_char(${prev}, 'YYYY-MM') AS prev_label,
+                COALESCE((SELECT sum(total_amount) FROM sales
+                           WHERE sale_date >= ${cur} AND sale_date < ${cur} + interval '1 month'), 0)::numeric AS cur_sales,
+                COALESCE((SELECT count(*) FROM sales
+                           WHERE sale_date >= ${cur} AND sale_date < ${cur} + interval '1 month'), 0)::int AS cur_sales_n,
+                COALESCE((SELECT sum(total_amount) FROM sales
+                           WHERE sale_date >= ${prev} AND sale_date < ${prev} + interval '1 month'), 0)::numeric AS prev_sales,
+                COALESCE((SELECT count(*) FROM sales
+                           WHERE sale_date >= ${prev} AND sale_date < ${prev} + interval '1 month'), 0)::int AS prev_sales_n`,
+        params,
+      ),
+      query(
+        `SELECT COALESCE((SELECT sum(amount) FROM expenses
+                           WHERE expense_date >= ${cur} AND expense_date < ${cur} + interval '1 month'), 0)::numeric AS cur_exp,
+                COALESCE((SELECT count(*) FROM expenses
+                           WHERE expense_date >= ${cur} AND expense_date < ${cur} + interval '1 month'), 0)::int AS cur_exp_n,
+                COALESCE((SELECT sum(amount) FROM expenses
+                           WHERE expense_date >= ${prev} AND expense_date < ${prev} + interval '1 month'), 0)::numeric AS prev_exp,
+                COALESCE((SELECT count(*) FROM expenses
+                           WHERE expense_date >= ${prev} AND expense_date < ${prev} + interval '1 month'), 0)::int AS prev_exp_n`,
+        params,
+      ),
+      query(
+        `SELECT category, COALESCE(sum(amount), 0)::numeric AS total,
+                count(*)::int AS n
+           FROM expenses
+          WHERE expense_date >= ${cur} AND expense_date < ${cur} + interval '1 month'
+          GROUP BY category
+          ORDER BY total DESC, category`,
+        params,
+      ),
+    ]);
+
+    const t = totals.rows[0];
+    const e = expenses.rows[0];
+    const curTotals = {
+      sales: Number(t.cur_sales),
+      salesCount: t.cur_sales_n,
+      expenses: Number(e.cur_exp),
+      expensesCount: e.cur_exp_n,
+    };
+    const prevTotals = {
+      sales: Number(t.prev_sales),
+      salesCount: t.prev_sales_n,
+      expenses: Number(e.prev_exp),
+      expensesCount: e.prev_exp_n,
+    };
+
+    res.json({
+      ok: true,
+      month: t.cur_label,
+      prevMonth: t.prev_label,
+      current: { ...curTotals, net: curTotals.sales - curTotals.expenses },
+      previous: { ...prevTotals, net: prevTotals.sales - prevTotals.expenses },
+      byCategory: byCategory.rows.map((r) => ({
+        category: r.category,
+        total: Number(r.total),
+        count: r.n,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/owner/department/:code — one owner management page
  * (Crop / Livestock Management): meta-tile numbers, low-stock items
  * scoped to the department (plus farm-wide ones), tasks due soon for
