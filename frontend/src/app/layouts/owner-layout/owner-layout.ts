@@ -87,6 +87,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Review every sale and manage the customer book.`,
           mob: 'Sales history & customers',
         };
+      case '/finance':
+        return {
+          title: 'Finance',
+          sub: `Welcome back, ${name}! Month totals, the expense ledger and credit decisions.`,
+          mob: 'Expenses & month totals',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -104,7 +110,7 @@ export class OwnerLayout {
     { label: 'Workers & HR', icon: 'fa-solid fa-users', link: '/workers' },
     { label: 'Procurement', icon: 'fa-solid fa-basket-shopping' },
     { label: 'Sales & Customers', icon: 'fa-solid fa-cart-shopping', link: '/sales' },
-    { label: 'Finance', icon: 'fa-solid fa-wallet' },
+    { label: 'Finance', icon: 'fa-solid fa-wallet', link: '/finance' },
     { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check' },
     { label: 'Reports', icon: 'fa-solid fa-chart-column' },
     { label: 'Settings', icon: 'fa-solid fa-gear' },

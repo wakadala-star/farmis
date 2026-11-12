@@ -348,6 +348,47 @@ export interface StockMovementRec {
   by: string; // recorder's name
 }
 
+/* ---------------- Phase 3C: Finance screen (owner only) ---------------- */
+
+/** One row of GET /api/expenses (newest first). */
+export interface ExpenseRec {
+  id: string;
+  category: string; // feed | medicine | fuel | salaries | maintenance | equipment | other
+  description: string;
+  amount: number; // UGX
+  date: string; // YYYY-MM-DD
+  method: string; // cash | mobile_money | bank_transfer | other
+  createdBy: string;
+  createdAt: number;
+}
+
+/** Filter for GET /api/expenses (all optional, inclusive days). */
+export interface ExpenseFilter {
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string;
+  category?: string;
+  method?: string;
+  q?: string; // description search
+}
+
+/** One month's money as GET /api/owner/finance reports it. */
+export interface MonthTotals {
+  sales: number;
+  salesCount: number;
+  expenses: number;
+  expensesCount: number;
+  net: number; // sales − expenses
+}
+
+/** GET /api/owner/finance — the selected month vs the one before it. */
+export interface MonthFinance {
+  month: string; // YYYY-MM
+  prevMonth: string;
+  current: MonthTotals;
+  previous: MonthTotals;
+  byCategory: { category: string; total: number; count: number }[];
+}
+
 /** A row of GET /api/users as the owner's staff list shows it. */
 export type StaffRec = ApiUser;
 
@@ -1000,6 +1041,94 @@ export class FarmApiService {
     notes?: string;
   }): Promise<ActionResult> {
     return this.send('POST', '/inventory/movements', input);
+  }
+
+  /* ---------------- Phase 3C: Finance screen (owner only) ---------------- */
+
+  /** Expense ledger (GET /expenses, capped at 200 rows). */
+  async listExpenses(filter: ExpenseFilter): Promise<{
+    ok: boolean;
+    message: string;
+    count: number;
+    expenses: ExpenseRec[];
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filter.dateFrom) params.set('dateFrom', filter.dateFrom);
+      if (filter.dateTo) params.set('dateTo', filter.dateTo);
+      if (filter.category) params.set('category', filter.category);
+      if (filter.method) params.set('method', filter.method);
+      if (filter.q) params.set('q', filter.q);
+      params.set('limit', '200');
+      const res = await this.get<{ count: number; expenses: ExpenseRec[] }>(
+        `/expenses?${params.toString()}`,
+      );
+      return { ok: true, message: '', count: res.count, expenses: res.expenses };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), count: 0, expenses: [] };
+    }
+  }
+
+  /** Edits an expense's fields (PATCH /expenses/:id). */
+  updateExpense(
+    id: string,
+    input: {
+      category?: string;
+      description?: string;
+      amount?: number;
+      date?: string; // YYYY-MM-DD
+      paymentMethod?: string;
+    },
+  ): Promise<ActionResult> {
+    return this.send('PATCH', `/expenses/${id}`, input);
+  }
+
+  /** Removes an expense — hard delete, any date (DELETE /expenses/:id). */
+  removeExpense(id: string): Promise<ActionResult> {
+    return this.send('DELETE', `/expenses/${id}`, undefined);
+  }
+
+  /** Month summary (GET /owner/finance?month=YYYY-MM, default current). */
+  async financeSummary(month?: string): Promise<{
+    ok: boolean;
+    message: string;
+    data: MonthFinance | null;
+  }> {
+    try {
+      const data = await this.get<MonthFinance>(
+        month ? `/owner/finance?month=${month}` : '/owner/finance',
+      );
+      return { ok: true, message: '', data };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), data: null };
+    }
+  }
+
+  /** Owner's farm-wide credit list (GET /transactions). */
+  async listCreditRequests(): Promise<{
+    ok: boolean;
+    message: string;
+    transactions: TransactionRec[];
+  }> {
+    try {
+      const res = await this.get<{ transactions: TransactionRec[] }>(
+        '/transactions',
+      );
+      return { ok: true, message: '', transactions: res.transactions ?? [] };
+    } catch (err) {
+      return { ok: false, message: apiMessage(err), transactions: [] };
+    }
+  }
+
+  /**
+   * Owner decides a pending credit request (POST /transactions/:id/
+   * decision) — farm-wide; 409 once anyone has decided it.
+   */
+  decideCreditRequest(
+    id: string,
+    decision: 'approved' | 'rejected',
+  ): Promise<ActionResult> {
+    return this.send('POST', `/transactions/${id}/decision`, { decision });
   }
 
   /* ---------------- internals ---------------- */

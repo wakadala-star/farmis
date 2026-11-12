@@ -1,0 +1,817 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Every shilling in one place: the month’s sales against its expenses,
+      the full expense ledger (add, edit, remove) and the credit requests
+      <strong>farm-wide</strong>. Supervisors decide their own department’s
+      requests — you can decide any that are still pending.
+    </span>
+  </p>
+
+  @if (notice()) {
+    <div class="form-alert form-alert--success" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>{{ notice() }}</span>
+    </div>
+  }
+  @if (error()) {
+    <div class="form-alert form-alert--error">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- ============ Tabs ============ -->
+  <div class="ws-tabs" role="tablist" aria-label="Finance sections">
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'summary'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'summary'"
+      (click)="switchTab('summary')"
+    >
+      <i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>
+      <span>Summary</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'expenses'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'expenses'"
+      (click)="switchTab('expenses')"
+    >
+      <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+      <span>Expenses</span>
+      <span class="badge-count">{{ expensesCount() }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'credits'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'credits'"
+      (click)="switchTab('credits')"
+    >
+      <i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i>
+      <span>Credits</span>
+      <span class="badge-count">{{ pending().length }}</span>
+    </button>
+  </div>
+
+  @switch (tab()) {
+    @case ('summary') {
+      <!-- ============ Month picker ============ -->
+      <div class="filter-bar" role="group" aria-label="Pick a month">
+        <div class="filter-bar__field">
+          <label for="fin-month">Month</label>
+          <input
+            id="fin-month"
+            type="month"
+            class="input"
+            [value]="month()"
+            (change)="onMonth($event)"
+          />
+        </div>
+        @if (summary(); as s) {
+          <p class="ws__count">
+            Comparing {{ s.month }} with {{ s.prevMonth }}
+          </p>
+        }
+      </div>
+
+      @if (summaryLoading()) {
+        <p class="empty-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          Loading the month summary…
+        </p>
+      } @else if (summaryError()) {
+        <div class="form-alert form-alert--error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ summaryError() }}</span>
+        </div>
+        <button type="button" class="btn-mini" (click)="retrySummary()">
+          <i class="fa-solid fa-rotate-right"></i>
+          Try again
+        </button>
+      } @else if (summary(); as s) {
+        <!-- ============ Month tiles ============ -->
+        <div class="meta-row" aria-label="This month at a glance">
+          <div class="meta-tile meta-tile--green">
+            <span class="meta-tile__icon"
+              ><i class="fa-solid fa-cart-shopping"></i
+            ></span>
+            <div class="meta-tile__body">
+              <span class="meta-tile__value is-money">{{
+                fmtMoney(s.current.sales)
+              }}</span>
+              <span class="meta-tile__label">Sales</span>
+              <span class="meta-tile__hint"
+                >{{ s.current.salesCount }} sale(s) · {{
+                  changeLabel(s.current.sales, s.previous.sales)
+                }}</span
+              >
+            </div>
+          </div>
+          <div class="meta-tile meta-tile--amber">
+            <span class="meta-tile__icon"
+              ><i class="fa-solid fa-wallet"></i
+            ></span>
+            <div class="meta-tile__body">
+              <span class="meta-tile__value is-money">{{
+                fmtMoney(s.current.expenses)
+              }}</span>
+              <span class="meta-tile__label">Expenses</span>
+              <span class="meta-tile__hint"
+                >{{ s.current.expensesCount }} expense(s) · {{
+                  changeLabel(s.current.expenses, s.previous.expenses)
+                }}</span
+              >
+            </div>
+          </div>
+          <div class="meta-tile meta-tile--blue">
+            <span class="meta-tile__icon"
+              ><i class="fa-solid fa-scale-balanced"></i
+            ></span>
+            <div class="meta-tile__body">
+              <span class="meta-tile__value is-money">{{
+                fmtMoney(s.current.net)
+              }}</span>
+              <span class="meta-tile__label">Net (sales − expenses)</span>
+              <span class="meta-tile__hint"
+                >Last month {{ fmtMoney(s.previous.net) }} · {{
+                  changeLabel(s.current.net, s.previous.net)
+                }}</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="ws__grid">
+          <!-- ============ Month vs month ============ -->
+          <article class="widget">
+            <header class="widget__head">
+              <i class="fa-solid fa-arrow-right-arrow-left widget__icon"></i>
+              <h2 class="widget__title">This Month vs Last</h2>
+            </header>
+
+            <div class="widget__body">
+              <div class="list-row">
+                <span class="list-row__icon"
+                  ><i class="fa-solid fa-cart-shopping"></i
+                ></span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">Sales</strong>
+                    <span class="chip chip--neutral"
+                      >{{ s.current.salesCount }} sale(s)</span
+                    >
+                  </p>
+                  <p class="list-row__sub">
+                    Last month: {{ fmtMoney(s.previous.sales) }}
+                  </p>
+                </div>
+                <div class="list-row__side">
+                  <span class="list-row__money">{{
+                    fmtMoney(s.current.sales)
+                  }}</span>
+                  <span
+                    [class]="
+                      s.current.sales >= s.previous.sales
+                        ? 'chip chip--green'
+                        : 'chip chip--red'
+                    "
+                    >{{ changeLabel(s.current.sales, s.previous.sales) }}</span
+                  >
+                </div>
+              </div>
+
+              <div class="list-row">
+                <span class="list-row__icon list-row__icon--amber"
+                  ><i class="fa-solid fa-wallet"></i
+                ></span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">Expenses</strong>
+                    <span class="chip chip--neutral"
+                      >{{ s.current.expensesCount }} expense(s)</span
+                    >
+                  </p>
+                  <p class="list-row__sub">
+                    Last month: {{ fmtMoney(s.previous.expenses) }}
+                  </p>
+                </div>
+                <div class="list-row__side">
+                  <span class="list-row__money">{{
+                    fmtMoney(s.current.expenses)
+                  }}</span>
+                  <span
+                    [class]="
+                      s.current.expenses <= s.previous.expenses
+                        ? 'chip chip--green'
+                        : 'chip chip--red'
+                    "
+                    >{{ changeLabel(s.current.expenses, s.previous.expenses) }}</span
+                  >
+                </div>
+              </div>
+
+              <div class="list-row">
+                <span class="list-row__icon list-row__icon--blue"
+                  ><i class="fa-solid fa-scale-balanced"></i
+                ></span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">Net</strong>
+                  </p>
+                  <p class="list-row__sub">
+                    Last month: {{ fmtMoney(s.previous.net) }}
+                  </p>
+                </div>
+                <div class="list-row__side">
+                  <span class="list-row__money">{{
+                    fmtMoney(s.current.net)
+                  }}</span>
+                  <span
+                    [class]="
+                      s.current.net >= s.previous.net
+                        ? 'chip chip--green'
+                        : 'chip chip--red'
+                    "
+                    >{{ changeLabel(s.current.net, s.previous.net) }}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- ============ Expense breakdown ============ -->
+          <article class="widget">
+            <header class="widget__head">
+              <i class="fa-solid fa-chart-pie widget__icon"></i>
+              <h2 class="widget__title">Expenses by Category</h2>
+              <div class="widget__action">
+                <span class="badge-count">{{ s.byCategory.length }}</span>
+              </div>
+            </header>
+
+            <div class="widget__body">
+              @for (row of s.byCategory; track row.category) {
+                <div class="list-row">
+                  <span class="list-row__icon">
+                    <i [class]="categoryIcon(row.category)"></i>
+                  </span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{
+                        categoryLabel(row.category)
+                      }}</strong>
+                      <span class="chip chip--neutral"
+                        >{{ sharePct(row) }}% of month</span
+                      >
+                    </p>
+                    <p class="list-row__sub">
+                      {{ row.count }} expense(s)
+                    </p>
+                  </div>
+                  <div class="list-row__side">
+                    <span class="list-row__money">{{
+                      fmtMoney(row.total)
+                    }}</span>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-receipt"></i>
+                  No expenses recorded for {{ s.month }} yet.
+                </p>
+              }
+            </div>
+          </article>
+        </div>
+      }
+    }
+
+    @case ('expenses') {
+      <!-- ============ Filters ============ -->
+      <div class="filter-bar" role="group" aria-label="Filter expenses">
+        <div class="filter-bar__field">
+          <label for="exp-from">From</label>
+          <input
+            id="exp-from"
+            type="date"
+            class="input"
+            [value]="filterFrom()"
+            (change)="onFilterFrom($event)"
+          />
+        </div>
+        <div class="filter-bar__field">
+          <label for="exp-to">To</label>
+          <input
+            id="exp-to"
+            type="date"
+            class="input"
+            [value]="filterTo()"
+            (change)="onFilterTo($event)"
+          />
+        </div>
+        <div class="filter-bar__field">
+          <label for="exp-cat">Category</label>
+          <select
+            id="exp-cat"
+            class="select"
+            [value]="filterCategory()"
+            (change)="onFilterCategory($event)"
+          >
+            <option value="">All categories</option>
+            <option value="feed">Feed</option>
+            <option value="medicine">Medicine</option>
+            <option value="fuel">Fuel</option>
+            <option value="salaries">Salaries</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="equipment">Equipment</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="exp-method">Method</label>
+          <select
+            id="exp-method"
+            class="select"
+            [value]="filterMethod()"
+            (change)="onFilterMethod($event)"
+          >
+            <option value="">All methods</option>
+            <option value="cash">Cash</option>
+            <option value="mobile_money">Mobile money</option>
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="exp-q">Search</label>
+          <input
+            id="exp-q"
+            type="search"
+            class="input"
+            placeholder="Description"
+            [value]="filterQ()"
+            (change)="onFilterQ($event)"
+          />
+        </div>
+        @if (hasExpenseFilters()) {
+          <button type="button" class="btn-mini" (click)="resetExpenseFilters()">
+            <i class="fa-solid fa-rotate-left"></i>
+            Reset
+          </button>
+        }
+      </div>
+
+      <div class="ws__grid">
+        <!-- ============ Add / edit expense ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i
+              [class]="
+                editingId()
+                  ? 'fa-solid fa-pen widget__icon'
+                  : 'fa-solid fa-plus widget__icon'
+              "
+            ></i>
+            <h2 class="widget__title">
+              {{ editingId() ? 'Edit Expense' : 'Record an Expense' }}
+            </h2>
+          </header>
+
+          <div class="widget__body">
+            <form [formGroup]="expenseForm" (ngSubmit)="saveExpense()">
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="expf-cat">Category</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-folder field__icon"></i>
+                    <select
+                      id="expf-cat"
+                      class="select"
+                      formControlName="category"
+                    >
+                      <option value="feed">Feed</option>
+                      <option value="medicine">Medicine</option>
+                      <option value="fuel">Fuel</option>
+                      <option value="salaries">Salaries</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="equipment">Equipment</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="expf-amount">Amount</label>
+                  <div class="field__box">
+                    <i class="fa-solid fa-coins field__icon"></i>
+                    <input
+                      id="expf-amount"
+                      type="number"
+                      min="1"
+                      step="any"
+                      class="input"
+                      [class.is-invalid]="invalid('amount')"
+                      placeholder="UGX"
+                      formControlName="amount"
+                    />
+                  </div>
+                  @if (invalid('amount')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Amount must be greater than 0.
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="expf-desc">Description</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-align-left field__icon"></i>
+                  <input
+                    id="expf-desc"
+                    type="text"
+                    class="input"
+                    [class.is-invalid]="invalid('description')"
+                    maxlength="255"
+                    placeholder="e.g. Two bags of layer pellets"
+                    formControlName="description"
+                  />
+                </div>
+                @if (invalid('description')) {
+                  <span class="field__error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    Describe the expense (2–255 characters).
+                  </span>
+                }
+              </div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="expf-date">Date</label>
+                  <div class="field__box">
+                    <i class="fa-regular fa-calendar field__icon"></i>
+                    <input
+                      id="expf-date"
+                      type="date"
+                      class="input"
+                      [class.is-invalid]="invalid('date')"
+                      formControlName="date"
+                    />
+                  </div>
+                  @if (invalid('date')) {
+                    <span class="field__error">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      Pick the date this expense belongs to.
+                    </span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field__label" for="expf-method"
+                    >Payment method</label
+                  >
+                  <div class="field__box">
+                    <i class="fa-solid fa-credit-card field__icon"></i>
+                    <select
+                      id="expf-method"
+                      class="select"
+                      formControlName="paymentMethod"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="mobile_money">Mobile money</option>
+                      <option value="bank_transfer">Bank transfer</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  class="btn btn--primary"
+                  type="submit"
+                  [disabled]="expenseSubmitting()"
+                  [attr.aria-busy]="expenseSubmitting()"
+                >
+                  <span>{{ editingId() ? 'Save Changes' : 'Record Expense' }}</span>
+                  @if (expenseSubmitting()) {
+                    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                  } @else if (editingId()) {
+                    <i class="fa-solid fa-check"></i>
+                  } @else {
+                    <i class="fa-solid fa-plus"></i>
+                  }
+                </button>
+                @if (editingId()) {
+                  <button
+                    class="btn btn--ghost"
+                    type="button"
+                    (click)="cancelExpenseEdit()"
+                  >
+                    <span>Cancel</span>
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                }
+              </div>
+            </form>
+          </div>
+        </article>
+
+        <!-- ============ Expense ledger ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-receipt widget__icon"></i>
+            <h2 class="widget__title">Expense Ledger</h2>
+            <div class="widget__action">
+              <span class="badge-count">{{ expensesCount() }}</span>
+            </div>
+          </header>
+
+          <div class="widget__body">
+            @if (expensesLoading()) {
+              <p class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Loading expenses…
+              </p>
+            } @else if (expensesError()) {
+              <div class="form-alert form-alert--error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ expensesError() }}</span>
+              </div>
+              <button type="button" class="btn-mini" (click)="retryExpenses()">
+                <i class="fa-solid fa-rotate-right"></i>
+                Try again
+              </button>
+            } @else {
+              <p class="ws__count">
+                Showing {{ expenses().length }} of {{ expensesCount() }}
+                expenses
+                @if (hasExpenseFilters()) {
+                  (filtered)
+                }
+              </p>
+
+              @for (expense of expenses(); track expense.id) {
+                <div class="list-row">
+                  <span class="list-row__icon">
+                    <i [class]="categoryIcon(expense.category)"></i>
+                  </span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{
+                        expense.description
+                      }}</strong>
+                      <span class="chip chip--neutral">{{
+                        categoryLabel(expense.category)
+                      }}</span>
+                    </p>
+                    <p class="list-row__sub">
+                      {{ fmtDay(expense.date) }} ·
+                      {{ methodLabel(expense.method) }} · by
+                      {{ expense.createdBy }}
+                    </p>
+                  </div>
+                  <div class="list-row__side">
+                    <span class="list-row__money">{{
+                      fmtMoney(expense.amount)
+                    }}</span>
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      title="Edit expense"
+                      (click)="editExpense(expense)"
+                    >
+                      <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-mini btn-mini--no"
+                      title="Remove expense"
+                      [disabled]="removingId() === expense.id"
+                      (click)="removeExpense(expense)"
+                    >
+                      @if (removingId() === expense.id) {
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                      } @else {
+                        <i class="fa-solid fa-trash"></i>
+                      }
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-receipt"></i>
+                  @if (hasExpenseFilters()) {
+                    No expenses match these filters — adjust or reset them.
+                  } @else {
+                    No expenses recorded yet — add the first one with the
+                    form.
+                  }
+                </p>
+              }
+            }
+          </div>
+        </article>
+      </div>
+    }
+
+    @case ('credits') {
+      <!-- ============ Tiles ============ -->
+      <div class="meta-row" aria-label="Credit requests at a glance">
+        <div class="meta-tile meta-tile--amber">
+          <span class="meta-tile__icon"
+            ><i class="fa-solid fa-hourglass-half"></i
+          ></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value">{{ pending().length }}</span>
+            <span class="meta-tile__label">Pending requests</span>
+            <span class="meta-tile__hint">
+              Farm-wide, waiting for a decision
+            </span>
+          </div>
+        </div>
+        <div class="meta-tile meta-tile--blue">
+          <span class="meta-tile__icon"
+            ><i class="fa-solid fa-coins"></i
+          ></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value is-money">{{
+              fmtMoney(pendingValue())
+            }}</span>
+            <span class="meta-tile__label">Value pending</span>
+            <span class="meta-tile__hint">Total UGX awaiting a decision</span>
+          </div>
+        </div>
+        <div class="meta-tile meta-tile--green">
+          <span class="meta-tile__icon"
+            ><i class="fa-solid fa-circle-check"></i
+          ></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value is-money">{{
+              fmtMoney(approvedValue())
+            }}</span>
+            <span class="meta-tile__label">Approved total</span>
+            <span class="meta-tile__hint">Credit approved so far</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ws__grid">
+        <!-- ============ Pending decisions ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-hourglass-half widget__icon"></i>
+            <h2 class="widget__title">Pending Decisions</h2>
+            <div class="widget__action">
+              <span class="badge-count">{{ pending().length }}</span>
+            </div>
+          </header>
+
+          <div class="widget__body">
+            @if (creditsLoading()) {
+              <p class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Loading credit requests…
+              </p>
+            } @else if (creditsError()) {
+              <div class="form-alert form-alert--error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ creditsError() }}</span>
+                <button type="button" class="btn-mini" (click)="retryCredits()">
+                  Retry
+                </button>
+              </div>
+            } @else {
+              @for (tx of pending(); track tx.id) {
+                <div class="list-row">
+                  <span class="list-row__icon list-row__icon--amber"
+                    ><i class="fa-solid fa-receipt"></i
+                  ></span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{
+                        fmtMoney(tx.amount)
+                      }}</strong>
+                      <span class="chip chip--amber">Pending</span>
+                    </p>
+                    <p class="list-row__sub" [title]="tx.reason">
+                      {{ tx.worker }} · {{ tx.reason }}
+                    </p>
+                    <p class="list-row__meta">
+                      {{ fmtDay(dayOf(tx.when)) }} ·
+                      {{ fmtClock(tx.when) }}
+                    </p>
+                  </div>
+                  <div class="list-row__side">
+                    <button
+                      type="button"
+                      class="btn-mini btn-mini--ok"
+                      [disabled]="decidingId() === tx.id"
+                      (click)="approve(tx)"
+                    >
+                      @if (decidingId() === tx.id) {
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                      } @else {
+                        <i class="fa-solid fa-check"></i>
+                      }
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-mini btn-mini--no"
+                      [disabled]="decidingId() === tx.id"
+                      (click)="reject(tx)"
+                    >
+                      @if (decidingId() === tx.id) {
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                      } @else {
+                        <i class="fa-solid fa-xmark"></i>
+                      }
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-circle-check"></i>
+                  No credit requests waiting — every request has been
+                  decided.
+                </p>
+              }
+            }
+          </div>
+        </article>
+
+        <!-- ============ Decision history ============ -->
+        <article class="widget">
+          <header class="widget__head">
+            <i class="fa-solid fa-clock-rotate-left widget__icon"></i>
+            <h2 class="widget__title">Decision History</h2>
+            <div class="widget__action">
+              <span class="badge-count">{{ history().length }}</span>
+            </div>
+          </header>
+
+          <div class="widget__body">
+            @if (creditsLoading()) {
+              <p class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Loading credit requests…
+              </p>
+            } @else if (creditsError()) {
+              <div class="form-alert form-alert--error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>{{ creditsError() }}</span>
+                <button type="button" class="btn-mini" (click)="retryCredits()">
+                  Retry
+                </button>
+              </div>
+            } @else {
+              @for (tx of history(); track tx.id) {
+                <div class="list-row">
+                  <span
+                    [class]="
+                      tx.status === 'approved'
+                        ? 'list-row__icon'
+                        : 'list-row__icon list-row__icon--red'
+                    "
+                    ><i class="fa-solid fa-receipt"></i
+                  ></span>
+                  <div class="list-row__main">
+                    <p class="list-row__title-row">
+                      <strong class="list-row__title">{{
+                        fmtMoney(tx.amount)
+                      }}</strong>
+                      <span [class]="'chip chip--' + statusTone(tx.status)">{{
+                        statusLabel(tx.status)
+                      }}</span>
+                    </p>
+                    <p class="list-row__sub" [title]="tx.reason">
+                      {{ tx.worker }} · {{ tx.reason }}
+                    </p>
+                    <p class="list-row__meta">
+                      {{ fmtDay(dayOf(tx.when)) }} ·
+                      {{ fmtClock(tx.when) }}
+                    </p>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                  No decided requests yet.
+                </p>
+              }
+            }
+          </div>
+        </article>
+      </div>
+    }
+  }
+</section>

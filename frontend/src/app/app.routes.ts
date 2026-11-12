@@ -89,6 +89,13 @@ export const routes: Routes = [
             (m) => m.InventoryScreen,
           ),
       },
+      {
+        path: 'finance',
+        loadComponent: () =>
+          import('./features/finance/finance-screen/finance-screen').then(
+            (m) => m.FinanceScreen,
+          ),
+      },
     ],
   },
 
