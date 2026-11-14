@@ -84,7 +84,8 @@ router.get('/department', requireAuth, requireRole('supervisor'), async (req, re
 
 /**
  * POST /api/tasks — assign work (supervisor, own department).
- * Body: { title, assignee, due, notes? } — assignee is the worker's email.
+ * Body: { title, assignee, due, notes?, activityId? } — assignee is the
+ * worker's email; activityId links the portion to a farm activity.
  */
 router.post('/', requireAuth, requireRole('supervisor'), async (req, res, next) => {
   try {
@@ -93,12 +94,19 @@ router.post('/', requireAuth, requireRole('supervisor'), async (req, res, next) 
     const assignee = String(body.assignee ?? '').trim().toLowerCase();
     const due = body.due;
     const notes = String(body.notes ?? '').trim();
+    const activityId =
+      body.activityId === undefined || body.activityId === null || body.activityId === ''
+        ? null
+        : String(body.activityId);
 
     const errors = [];
     if (title.length < 3 || title.length > 150) errors.push('Give the task a short title (3–150 characters).');
     if (!isIsoDate(due)) errors.push('A valid due date is required.');
     if (!EMAIL_RE.test(assignee)) errors.push('Choose the worker who will do it.');
     if (notes.length > 500) errors.push('Notes must be 500 characters or fewer.');
+    if (activityId !== null && !/^\d+$/.test(activityId)) {
+      errors.push('That planned activity is not valid.');
+    }
     if (errors.length) return res.status(400).json({ ok: false, message: errors.join(' ') });
 
     if (!req.user.departmentId) {
@@ -123,11 +131,27 @@ router.post('/', requireAuth, requireRole('supervisor'), async (req, res, next) 
       });
     }
 
+    // Carved from the plan: the activity must still exist (it may have
+    // been removed since the calendar was opened).
+    if (activityId !== null) {
+      const { rows: planned } = await query(
+        'SELECT activity_id FROM farm_activities WHERE activity_id = $1',
+        [activityId],
+      );
+      if (planned.length === 0) {
+        return res.status(400).json({
+          ok: false,
+          message: 'That planned activity no longer exists — reload the calendar.',
+        });
+      }
+    }
+
     const { rows } = await query(
-      `INSERT INTO tasks (title, description, assigned_to, assigned_by, department_id, due_date, task_status)
-       VALUES ($1, $2, $3, $4, $5, $6::date, 'pending')
+      `INSERT INTO tasks (title, description, assigned_to, assigned_by, department_id,
+                          due_date, task_status, activity_id)
+       VALUES ($1, $2, $3, $4, $5, $6::date, 'pending', $7)
        RETURNING task_id, title, description, due_date, task_status`,
-      [title, notes || null, assignees[0].user_id, req.user.id, req.user.departmentId, due],
+      [title, notes || null, assignees[0].user_id, req.user.id, req.user.departmentId, due, activityId],
     );
 
     const record = toTask({

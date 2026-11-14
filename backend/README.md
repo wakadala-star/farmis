@@ -50,7 +50,7 @@ Requires the PostgreSQL service running locally with the credentials in
 | DELETE | `/api/users/:id`   | owner/supervisor| Remove from the team by deactivating the account (`inactive` blocks signin, history kept) — supervisor: own-dept workers only, owner: anyone but owners |
 | GET    | `/api/tasks/mine`  | required        | Tasks assigned to the signed-in user (cancelled hidden, mapped to open/in-progress/done) |
 | GET    | `/api/tasks/department` | supervisor | Every live task of the supervisor's department |
-| POST   | `/api/tasks`       | supervisor      | Assign work to an active team worker (assignee by email, required due date) |
+| POST   | `/api/tasks`       | supervisor      | Assign work to an active team worker (assignee by email, required due date, optional `activityId` linking the portion to a farm activity) |
 | PATCH  | `/api/tasks/:id/status` | supervisor | Cycle status `open → in-progress → done` (own department; cancelled tasks locked) |
 | GET    | `/api/attendance/mine` | required    | Own clock records, newest first (`running` while open, then approval state) |
 | POST   | `/api/attendance/clock-in` | worker   | Open today's shift — one shift per day, idempotent while running |
@@ -60,6 +60,10 @@ Requires the PostgreSQL service running locally with the credentials in
 | GET    | `/api/entries`     | required        | Activity feed, newest first (owner: every department, others: own) — filters `dept` (owner picks any; others locked to their own, foreign → 403), `dateFrom`/`dateTo` (inclusive days), `activity` (exact), `q` (subject/place/notes search), `limit` (1–500, default 100) + `count` + `stats` (total / this week Mon-start / distinct activities) |
 | GET    | `/api/entries/activities` | required | Distinct activity names for the feed filter, in the caller's scope |
 | POST   | `/api/entries`     | worker          | Record a field/livestock activity (department from session) |
+| GET    | `/api/activities`  | owner/supervisor | Farm-wide activity plan behind the calendar — each row carries `cadence` (`once`\|`weekly`\|`monthly`), the anchor `date` and live portion counts (`assigned`/`done`, cancelled excluded); no department scoping (the calendar expands occurrences client-side from cadence + anchor) |
+| POST   | `/api/activities`  | owner           | Add an activity (title 3–150, cadence, `date` = the clicked day and anchor for repeats, notes ≤ 500) |
+| PATCH  | `/api/activities/:id` | owner        | Edit a plan row's title, notes or cadence (the anchor date is fixed — move it by re-adding) |
+| DELETE | `/api/activities/:id` | owner        | Remove a plan row — tasks already carved from it survive (`tasks.activity_id` → NULL) |
 | GET    | `/api/transactions/mine` | required  | Own credit requests, newest first |
 | POST   | `/api/transactions`| worker          | Request credit for a farm purchase (amount > 0, reason ≤ 200 chars) |
 | GET    | `/api/transactions/department` | supervisor | Department credit requests, newest first (pending + decided) |
