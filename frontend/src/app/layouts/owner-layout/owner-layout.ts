@@ -9,6 +9,7 @@ import {
 } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
+import { FarmApiService } from '../../core/farm-api.service';
 import { ROLE_LABELS } from '../../core/models';
 import { Brand } from '../../shared/brand/brand';
 import { ProfileMenu } from '../../shared/profile-menu/profile-menu';
@@ -24,6 +25,13 @@ interface PageMeta {
   title: string;
   sub: string;
   mob: string;
+}
+
+/** One system message in the bell's dropdown (Phase 4). */
+interface BellMessage {
+  text: string;
+  link: string;
+  icon: string;
 }
 
 /**
@@ -43,10 +51,12 @@ interface PageMeta {
 export class OwnerLayout {
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  readonly api = inject(FarmApiService);
 
   readonly drawerOpen = signal(false);
   readonly collapsed = signal(false);
   readonly userMenuOpen = signal(false);
+  readonly bellMenuOpen = signal(false);
 
   readonly roleLabel = computed(() => ROLE_LABELS[this.auth.role() ?? 'owner']);
 
@@ -56,6 +66,45 @@ export class OwnerLayout {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+  });
+
+  /** Badge on the bell: the work waiting on the owner personally —
+   *  credit requests to decide plus low-stock items to reorder. */
+  readonly pendingCount = computed(() => {
+    const summary = this.api.ownerSummary();
+    if (!summary) return 0;
+    return summary.pending.credit + summary.stats.lowStock;
+  });
+
+  /** System messages behind the badge, each linking to the page that
+   *  clears it (Phase 4). Sums to pendingCount(). */
+  readonly messages = computed<BellMessage[]>(() => {
+    const summary = this.api.ownerSummary();
+    if (!summary) return [];
+    const list: BellMessage[] = [];
+    const credits = summary.pending.credit;
+    if (credits > 0) {
+      list.push({
+        text:
+          credits === 1
+            ? '1 credit request awaiting decision'
+            : `${credits} credit requests awaiting decision`,
+        link: '/finance',
+        icon: 'fa-solid fa-money-bill-transfer',
+      });
+    }
+    const lowStock = summary.stats.lowStock;
+    if (lowStock > 0) {
+      list.push({
+        text:
+          lowStock === 1
+            ? '1 low-stock item needs reordering'
+            : `${lowStock} low-stock items need reordering`,
+        link: '/inventory',
+        icon: 'fa-solid fa-triangle-exclamation',
+      });
+    }
+    return list;
   });
 
   /** Active top-level path, kept in sync with the router. */
@@ -104,8 +153,8 @@ export class OwnerLayout {
       case '/activities':
         return {
           title: 'Farm Activities',
-          sub: `Welcome back, ${name}! Every field entry across the farm, filterable.`,
-          mob: 'Field entries & activity',
+          sub: `Welcome back, ${name}! Plan work on the calendar and review every field entry.`,
+          mob: 'Plan & field entries',
         };
       case '/reports':
         return {
@@ -137,6 +186,8 @@ export class OwnerLayout {
   ];
 
   constructor() {
+    // The bell badge reads the dashboard summary wherever the owner is.
+    void this.api.ensure('ownerSummary');
     this.path.set(this.pathOf(this.router.url));
     this.router.events
       .pipe(
@@ -170,9 +221,18 @@ export class OwnerLayout {
     this.userMenuOpen.update((open) => !open);
   }
 
+  toggleBell(): void {
+    this.bellMenuOpen.update((open) => !open);
+  }
+
+  closeBell(): void {
+    this.bellMenuOpen.set(false);
+  }
+
   signOut(): void {
     this.userMenuOpen.set(false);
     this.drawerOpen.set(false);
+    this.bellMenuOpen.set(false);
     this.auth.signOut();
     void this.router.navigate(['/signin']);
   }
@@ -181,6 +241,7 @@ export class OwnerLayout {
   onEscape(): void {
     this.drawerOpen.set(false);
     this.userMenuOpen.set(false);
+    this.bellMenuOpen.set(false);
   }
 
   /** '/crops?x=1' → '/crops' */

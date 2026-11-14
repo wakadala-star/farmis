@@ -676,6 +676,24 @@
   }
 }
 
+@media (max-width: $bp-sm-down) {
+  /* Narrow phones: keep the panel inside the viewport — its right
+     edge sits 64px from the screen edge (avatar + gap), so cap the
+     width to leave a 16px margin on the left. */
+  .bell-pop {
+    width: min(280px, calc(100vw - 80px));
+  }
+
+  /* The worker shell puts its clock button between the bell and the
+     avatar, so a panel right-anchored to the bell hangs 48px (clock
+     + gap) further left than the supervisor's — off the edge of a
+     phone. Shift it back so it lands exactly where the supervisor's
+     does. */
+  .bell-wrap--clock .bell-pop {
+    right: -48px;
+  }
+}
+
 .date-pill {
   display: flex;
   align-items: center;

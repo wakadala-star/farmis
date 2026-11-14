@@ -39,6 +39,7 @@ type Collection =
   | 'tasks'
   | 'attendance'
   | 'entries'
+  | 'plan'
   | 'reports'
   | 'workers'
   | 'deptTasks'
@@ -174,6 +175,17 @@ export interface DeptPage {
     measure: string;
     notes: string;
   }[];
+}
+
+/** One planned activity on the owner's calendar (GET /api/activities). */
+export interface PlanActivity {
+  id: string;
+  title: string;
+  notes: string;
+  cadence: 'once' | 'weekly' | 'monthly';
+  date: string; // anchor date YYYY-MM-DD (first occurrence)
+  assigned: number; // live portions carved from it (cancelled excluded)
+  done: number; // ...of which completed
 }
 
 /** GET/POST /api/crops row. */
@@ -479,6 +491,9 @@ export class FarmApiService {
   private readonly _entries = signal<DataEntryRec[]>([]);
   private readonly _reports = signal<WorkerReportRec[]>([]);
 
+  /* --- Farm Activities plan (Phase 3D redesign) --- */
+  private readonly _plan = signal<PlanActivity[]>([]);
+
   /* --- supervisor loop + worker credit (Phase 2C) --- */
   private readonly _workers = signal<WorkerRec[]>([]);
   private readonly _deptTasks = signal<FarmTask[]>([]);
@@ -500,6 +515,7 @@ export class FarmApiService {
     tasks: fresh(),
     attendance: fresh(),
     entries: fresh(),
+    plan: fresh(),
     reports: fresh(),
     workers: fresh(),
     deptTasks: fresh(),
@@ -529,6 +545,7 @@ export class FarmApiService {
   readonly tasks = this._tasks.asReadonly();
   readonly attendance = this._attendance.asReadonly();
   readonly entries = this._entries.asReadonly();
+  readonly plan = this._plan.asReadonly();
   readonly reports = this._reports.asReadonly();
   readonly workers = this._workers.asReadonly();
   readonly deptTasks = this._deptTasks.asReadonly();
@@ -550,6 +567,8 @@ export class FarmApiService {
   readonly attendanceError = computed(() => this._state().attendance.error);
   readonly entriesLoading = computed(() => this._state().entries.loading);
   readonly entriesError = computed(() => this._state().entries.error);
+  readonly planLoading = computed(() => this._state().plan.loading);
+  readonly planError = computed(() => this._state().plan.error);
   readonly reportsLoading = computed(() => this._state().reports.loading);
   readonly reportsError = computed(() => this._state().reports.error);
   readonly workersLoading = computed(() => this._state().workers.loading);
@@ -671,6 +690,9 @@ export class FarmApiService {
       } else if (col === 'staff') {
         const res = await this.get<{ users: ApiUser[] }>('/users');
         this._staff.set(res.users ?? []);
+      } else if (col === 'plan') {
+        const res = await this.get<{ activities: PlanActivity[] }>('/activities');
+        this._plan.set(res.activities ?? []);
       } else {
         const res = await this.get<{ generated: GeneratedReport[] }>(
           '/reports/operations',
@@ -723,13 +745,22 @@ export class FarmApiService {
 
   /* ---------------- supervisor actions (2C) ---------------- */
 
-  /** Assigns a task to an active team worker (POST /tasks). */
+  /** Assigns a task to an active team worker (POST /tasks).
+   *  `activityId` carves the task out of a planned activity — both the
+   *  plan counts and the department task list refresh in that case. */
   assignTask(input: {
     title: string;
     assignee: string; // worker's email
     due: string; // YYYY-MM-DD
     notes: string;
+    activityId?: string;
   }): Promise<ActionResult> {
+    if (input.activityId) {
+      return this.send('POST', '/tasks', input, 'plan').then(async (res) => {
+        if (res.ok) await this.ensure('deptTasks', true);
+        return res;
+      });
+    }
     return this.send('POST', '/tasks', input, 'deptTasks');
   }
 
@@ -1204,6 +1235,32 @@ export class FarmApiService {
     } catch (err) {
       return { ok: false, message: apiMessage(err), activities: [] };
     }
+  }
+
+  /* ---------------- Farm Activities plan (redesign) ---------------- */
+
+  /** Adds an activity to the plan (POST /activities, owner). */
+  createPlanActivity(input: {
+    title: string;
+    notes: string;
+    cadence: PlanActivity['cadence'];
+    date: string; // the clicked day = anchor for weekly/monthly
+  }): Promise<ActionResult> {
+    return this.send('POST', '/activities', input, 'plan');
+  }
+
+  /** Edits a plan row's title, notes or cadence (PATCH /activities/:id). */
+  updatePlanActivity(
+    id: string,
+    input: { title: string; notes: string; cadence: PlanActivity['cadence'] },
+  ): Promise<ActionResult> {
+    return this.send('PATCH', `/activities/${id}`, input, 'plan');
+  }
+
+  /** Removes a plan row (DELETE /activities/:id) — tasks carved from
+   *  it stay in the queues (the link is cleared server-side). */
+  deletePlanActivity(id: string): Promise<ActionResult> {
+    return this.send('DELETE', `/activities/${id}`, {}, 'plan');
   }
 
   /* ---------------- internals ---------------- */

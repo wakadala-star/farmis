@@ -118,6 +118,17 @@
   padding: 40px 20px;
 }
 
+/* The empty <router-outlet> is a grid item of its own here: with
+   place-items: center the free space splits between two stretched
+   rows, so the card ends up at three-quarter height (top gap 3× the
+   bottom gap — the "form sits too low / off-centre" bug on both
+   sign-in and sign-up). The routed component renders as a sibling of
+   the outlet, so hiding it is safe and the card becomes the only
+   grid item, centred exactly. */
+.auth__main router-outlet {
+  display: none;
+}
+
 .auth-card {
   width: min(452px, 100%);
   background: $card;

@@ -1,208 +1,617 @@
 <section class="ws">
-  <p class="ws__note">
-    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-    <span>
-      Every field and livestock entry the team files, newest first.
-      Workers record activities on their own <strong>Data Entry</strong>
-      screen — this feed is read-only.
-      @if (isOwner) {
-        Owners can filter across departments; supervisors only ever see
-        their own.
-      }
-    </span>
-  </p>
-
-  @if (notice()) {
-    <div class="form-alert form-alert--success" role="status">
-      <i class="fa-solid fa-circle-check"></i>
-      <span>{{ notice() }}</span>
-    </div>
-  }
-  @if (error()) {
-    <div class="form-alert form-alert--error">
-      <i class="fa-solid fa-circle-exclamation"></i>
-      <span>{{ error() }}</span>
-    </div>
-  }
-
-  <!-- ============ Tiles ============ -->
-  <div class="meta-row" aria-label="Activity feed at a glance">
-    <div class="meta-tile meta-tile--blue">
-      <span class="meta-tile__icon"
-        ><i class="fa-solid fa-clipboard-list"></i
-      ></span>
-      <div class="meta-tile__body">
-        <span class="meta-tile__value">{{ stats().total }}</span>
-        <span class="meta-tile__label">Entries in view</span>
-        <span class="meta-tile__hint">
-          {{ count() }} returned · within scope + filters
-        </span>
-      </div>
-    </div>
-    <div class="meta-tile meta-tile--green">
-      <span class="meta-tile__icon"
-        ><i class="fa-solid fa-calendar-day"></i
-      ></span>
-      <div class="meta-tile__body">
-        <span class="meta-tile__value">{{ stats().thisWeek }}</span>
-        <span class="meta-tile__label">Filed this week</span>
-        <span class="meta-tile__hint">Monday-start week, current view</span>
-      </div>
-    </div>
-    <div class="meta-tile meta-tile--amber">
-      <span class="meta-tile__icon"><i class="fa-solid fa-tags"></i></span>
-      <div class="meta-tile__body">
-        <span class="meta-tile__value">{{ stats().activities }}</span>
-        <span class="meta-tile__label">Distinct activities</span>
-        <span class="meta-tile__hint">Activity names in the current view</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ Filters ============ -->
-  <div class="filter-bar" role="group" aria-label="Filter activities">
-    @if (isOwner) {
-      <div class="filter-bar__field">
-        <label for="act-dept">Department</label>
-        <select
-          id="act-dept"
-          class="select"
-          [value]="filterDept()"
-          (change)="onFilterDept($event)"
-        >
-          <option value="">All departments</option>
-          <option value="crops">Crops</option>
-          <option value="livestock">Livestock</option>
-        </select>
-      </div>
-    }
-    <div class="filter-bar__field">
-      <label for="act-from">From</label>
-      <input
-        id="act-from"
-        type="date"
-        class="input"
-        [value]="filterFrom()"
-        (change)="onFilterFrom($event)"
-      />
-    </div>
-    <div class="filter-bar__field">
-      <label for="act-to">To</label>
-      <input
-        id="act-to"
-        type="date"
-        class="input"
-        [value]="filterTo()"
-        (change)="onFilterTo($event)"
-      />
-    </div>
-    <div class="filter-bar__field">
-      <label for="act-activity">Activity</label>
-      <select
-        id="act-activity"
-        class="select"
-        [value]="filterActivity()"
-        (change)="onFilterActivity($event)"
-      >
-        <option value="">All activities</option>
-        @for (activity of activities(); track activity) {
-          <option [value]="activity">{{ activity }}</option>
-        }
-      </select>
-    </div>
-    <div class="filter-bar__field">
-      <label for="act-q">Search</label>
-      <input
-        id="act-q"
-        type="search"
-        class="input"
-        placeholder="Subject, place or notes"
-        [value]="filterQ()"
-        (change)="onFilterQ($event)"
-      />
-    </div>
-    @if (hasFilters()) {
-      <button type="button" class="btn-mini" (click)="resetFilters()">
-        <i class="fa-solid fa-rotate-left"></i>
-        Reset
-      </button>
-    }
-  </div>
-
-  <!-- ============ Feed ============ -->
-  <article class="widget">
-    <header class="widget__head">
-      <i class="fa-solid fa-calendar-check widget__icon"></i>
-      <h2 class="widget__title">Activity Feed</h2>
-      <div class="widget__action">
+  <!-- ============ Tabs ============ -->
+  <div class="ws-tabs" role="tablist" aria-label="Farm activities sections">
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'plan'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'plan'"
+      (click)="switchTab('plan')"
+    >
+      <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+      <span>Plan</span>
+      <span class="badge-count">{{ plan().length }}</span>
+    </button>
+    <button
+      type="button"
+      class="ws-tabs__btn"
+      [class.is-active]="tab() === 'entries'"
+      role="tab"
+      [attr.aria-selected]="tab() === 'entries'"
+      (click)="switchTab('entries')"
+    >
+      <i class="fa-solid fa-list" aria-hidden="true"></i>
+      <span>Entries</span>
+      @if (count() > 0) {
         <span class="badge-count">{{ count() }}</span>
-      </div>
-    </header>
+      }
+    </button>
+  </div>
 
-    <div class="widget__body">
-      @if (loading()) {
-        <p class="empty-state">
-          <i class="fa-solid fa-spinner fa-spin"></i>
-          Loading entries…
-        </p>
-      } @else if (loadError()) {
+  @switch (tab()) {
+    @case ('plan') {
+      <!-- ============ Plan: month calendar ============ -->
+      <p class="ws__note">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        <span>
+          Planned farm work, farm-wide. Owners add activities to any date —
+          once, weekly or monthly — and supervisors carve each day's
+          activities into task portions for the team.
+        </span>
+      </p>
+
+      @if (planError()) {
         <div class="form-alert form-alert--error">
           <i class="fa-solid fa-circle-exclamation"></i>
-          <span>{{ loadError() }}</span>
+          <span>{{ planError() }}</span>
+          <button type="button" class="btn-mini" (click)="retryPlan()">
+            <i class="fa-solid fa-rotate-right"></i>
+            Try again
+          </button>
         </div>
-        <button type="button" class="btn-mini" (click)="retry()">
-          <i class="fa-solid fa-rotate-right"></i>
-          Try again
-        </button>
-      } @else {
-        <p class="ws__count">
-          Showing {{ entries().length }} of {{ count() }} entries
-          @if (hasFilters()) {
-            (filtered)
-          }
-        </p>
+      }
 
-        @for (entry of entries(); track entry.id) {
-          <div class="list-row">
-            <span [class]="deptIconClass(entry.dept)">
-              <i [class]="deptIcon(entry.dept)"></i>
-            </span>
-            <div class="list-row__main">
-              <p class="list-row__title-row">
-                <strong class="list-row__title">{{ entry.subject }}</strong>
-                @if (isOwner && deptLabel(entry.dept)) {
-                  <span class="chip chip--neutral">{{
-                    deptLabel(entry.dept)
-                  }}</span>
-                }
-              </p>
-              <p class="list-row__sub" [title]="entry.activity">
-                {{ entry.activity }} · {{ entry.place }}
-              </p>
-              <p class="list-row__meta">
-                {{ entry.worker }} · {{ fmtDay(entry.date) }} ·
-                {{ entry.measure }}
-              </p>
-              @if (entry.notes) {
-                <p class="list-row__meta">
-                  <i class="fa-solid fa-note-sticky"></i>
-                  {{ entry.notes }}
-                </p>
-              }
-            </div>
+      <div class="plan">
+        <div class="plan__bar">
+          <div class="plan__nav">
+            <button
+              type="button"
+              class="icon-btn"
+              (click)="prevMonth()"
+              aria-label="Previous month"
+              title="Previous month"
+            >
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <h2 class="plan__month">{{ monthLabel() }}</h2>
+            <button
+              type="button"
+              class="icon-btn"
+              (click)="nextMonth()"
+              aria-label="Next month"
+              title="Next month"
+            >
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
           </div>
-        } @empty {
-          <p class="empty-state">
-            <i class="fa-solid fa-calendar-xmark"></i>
-            @if (hasFilters()) {
-              No entries match these filters — adjust or reset them.
+          <button type="button" class="btn btn--ghost plan__today" (click)="goToday()">
+            Today
+          </button>
+          <p class="plan__hint">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            @if (isOwner) {
+              Tap a date to add, edit or remove activities.
             } @else {
-              No field entries yet — workers file them on their Data Entry
-              screen.
+              Tap a date to carve its activities into task portions.
             }
           </p>
+        </div>
+
+        @if (planLoading() && plan().length === 0) {
+          <p class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading the plan…
+          </p>
+        } @else {
+          <div class="plan__grid" role="grid" [attr.aria-label]="monthLabel()">
+            @for (d of weekdays; track d) {
+              <span class="plan__dow" role="columnheader">{{ d }}</span>
+            }
+            @for (cell of cells(); track cell.key) {
+              <button
+                type="button"
+                class="plan__day"
+                [class.is-out]="!cell.inMonth"
+                [class.is-today]="cell.isToday"
+                [class.is-selected]="cell.key === selectedDate()"
+                [title]="cellTitle(cell)"
+                [attr.aria-label]="cellTitle(cell)"
+                (click)="openDay(cell)"
+              >
+                <span class="plan__num">{{ cell.day }}</span>
+                @if (cell.activities.length > 0) {
+                  <span class="plan__dots" aria-hidden="true">
+                    @for (a of cell.activities.slice(0, 3); track a.id) {
+                      <i class="plan__dot"></i>
+                    }
+                    @if (cell.activities.length > 3) {
+                      <span class="plan__more">+{{ cell.activities.length - 3 }}</span>
+                    }
+                  </span>
+                }
+              </button>
+            }
+          </div>
         }
-      }
+      </div>
+    }
+
+    @case ('entries') {
+      <!-- ============ Entries: the Phase 3D feed ============ -->
+      <p class="ws__note">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        <span>
+          Every field and livestock entry the team files, newest first.
+          Workers record activities on their own <strong>Data Entry</strong>
+          screen — this feed is read-only.
+          @if (isOwner) {
+            Owners can filter across departments; supervisors only ever see
+            their own.
+          }
+        </span>
+      </p>
+
+      <!-- ============ Tiles ============ -->
+      <div class="meta-row" aria-label="Activity feed at a glance">
+        <div class="meta-tile meta-tile--blue">
+          <span class="meta-tile__icon"
+            ><i class="fa-solid fa-clipboard-list"></i
+          ></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value">{{ stats().total }}</span>
+            <span class="meta-tile__label">Entries in view</span>
+            <span class="meta-tile__hint">
+              {{ count() }} returned · within scope + filters
+            </span>
+          </div>
+        </div>
+        <div class="meta-tile meta-tile--green">
+          <span class="meta-tile__icon"
+            ><i class="fa-solid fa-calendar-day"></i
+          ></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value">{{ stats().thisWeek }}</span>
+            <span class="meta-tile__label">Filed this week</span>
+            <span class="meta-tile__hint">Monday-start week, current view</span>
+          </div>
+        </div>
+        <div class="meta-tile meta-tile--amber">
+          <span class="meta-tile__icon"><i class="fa-solid fa-tags"></i></span>
+          <div class="meta-tile__body">
+            <span class="meta-tile__value">{{ stats().activities }}</span>
+            <span class="meta-tile__label">Distinct activities</span>
+            <span class="meta-tile__hint">Activity names in the current view</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Filters ============ -->
+      <div class="filter-bar" role="group" aria-label="Filter activities">
+        @if (isOwner) {
+          <div class="filter-bar__field">
+            <label for="act-dept">Department</label>
+            <select
+              id="act-dept"
+              class="select"
+              [value]="filterDept()"
+              (change)="onFilterDept($event)"
+            >
+              <option value="">All departments</option>
+              <option value="crops">Crops</option>
+              <option value="livestock">Livestock</option>
+            </select>
+          </div>
+        }
+        <div class="filter-bar__field">
+          <label for="act-from">From</label>
+          <input
+            id="act-from"
+            type="date"
+            class="input"
+            [value]="filterFrom()"
+            (change)="onFilterFrom($event)"
+          />
+        </div>
+        <div class="filter-bar__field">
+          <label for="act-to">To</label>
+          <input
+            id="act-to"
+            type="date"
+            class="input"
+            [value]="filterTo()"
+            (change)="onFilterTo($event)"
+          />
+        </div>
+        <div class="filter-bar__field">
+          <label for="act-activity">Activity</label>
+          <select
+            id="act-activity"
+            class="select"
+            [value]="filterActivity()"
+            (change)="onFilterActivity($event)"
+          >
+            <option value="">All activities</option>
+            @for (activity of activities(); track activity) {
+              <option [value]="activity">{{ activity }}</option>
+            }
+          </select>
+        </div>
+        <div class="filter-bar__field">
+          <label for="act-q">Search</label>
+          <input
+            id="act-q"
+            type="search"
+            class="input"
+            placeholder="Subject, place or notes"
+            [value]="filterQ()"
+            (change)="onFilterQ($event)"
+          />
+        </div>
+        @if (hasFilters()) {
+          <button type="button" class="btn-mini" (click)="resetFilters()">
+            <i class="fa-solid fa-rotate-left"></i>
+            Reset
+          </button>
+        }
+      </div>
+
+      <!-- ============ Feed ============ -->
+      <article class="widget">
+        <header class="widget__head">
+          <i class="fa-solid fa-calendar-check widget__icon"></i>
+          <h2 class="widget__title">Activity Feed</h2>
+          <div class="widget__action">
+            <span class="badge-count">{{ count() }}</span>
+          </div>
+        </header>
+
+        <div class="widget__body">
+          @if (loading()) {
+            <p class="empty-state">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              Loading entries…
+            </p>
+          } @else if (loadError()) {
+            <div class="form-alert form-alert--error">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span>{{ loadError() }}</span>
+            </div>
+            <button type="button" class="btn-mini" (click)="retry()">
+              <i class="fa-solid fa-rotate-right"></i>
+              Try again
+            </button>
+          } @else {
+            <p class="ws__count">
+              Showing {{ entries().length }} of {{ count() }} entries
+              @if (hasFilters()) {
+                (filtered)
+              }
+            </p>
+
+            @for (entry of entries(); track entry.id) {
+              <div class="list-row">
+                <span [class]="deptIconClass(entry.dept)">
+                  <i [class]="deptIcon(entry.dept)"></i>
+                </span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">{{ entry.subject }}</strong>
+                    @if (isOwner && deptLabel(entry.dept)) {
+                      <span class="chip chip--neutral">{{
+                        deptLabel(entry.dept)
+                      }}</span>
+                    }
+                  </p>
+                  <p class="list-row__sub" [title]="entry.activity">
+                    {{ entry.activity }} · {{ entry.place }}
+                  </p>
+                  <p class="list-row__meta">
+                    {{ entry.worker }} · {{ fmtDay(entry.date) }} ·
+                    {{ entry.measure }}
+                  </p>
+                  @if (entry.notes) {
+                    <p class="list-row__meta">
+                      <i class="fa-solid fa-note-sticky"></i>
+                      {{ entry.notes }}
+                    </p>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <p class="empty-state">
+                <i class="fa-solid fa-calendar-xmark"></i>
+                @if (hasFilters()) {
+                  No entries match these filters — adjust or reset them.
+                } @else {
+                  No field entries yet — workers file them on their Data Entry
+                  screen.
+                }
+              </p>
+            }
+          }
+        </div>
+      </article>
+    }
+  }
+
+  <!-- ============ Day modal (plan) ============ -->
+  @if (selectedDate()) {
+    <div class="modal-backdrop" (click)="closeDay()">
+      <div
+        class="modal plan-day"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="dayLabel()"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="modal__head">
+          <span class="modal__icon"
+            ><i class="fa-solid fa-calendar-day"></i
+          ></span>
+          <h2 class="modal__title">{{ dayLabel() }}</h2>
+          <button
+            type="button"
+            class="modal__close"
+            aria-label="Close"
+            [disabled]="saving()"
+            (click)="closeDay()"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </header>
+
+        @if (modalNotice()) {
+          <div class="form-alert form-alert--success modal__alert" role="status">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>{{ modalNotice() }}</span>
+          </div>
+        }
+        @if (modalError()) {
+          <div class="form-alert form-alert--error modal__alert">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ modalError() }}</span>
+          </div>
+        }
+
+        <div class="modal__body">
+          <!-- The day's activities -->
+          @for (act of dayActivities(); track act.id) {
+            <article class="plan-day__item">
+              <div class="plan-day__row">
+                <h3 class="plan-day__title">{{ act.title }}</h3>
+                <span class="plan-day__cadence">{{
+                  cadenceLabel(act.cadence)
+                }}</span>
+              </div>
+              @if (act.notes) {
+                <p class="plan-day__notes">{{ act.notes }}</p>
+              }
+              <div class="plan-day__foot">
+                <span class="plan-day__portions">{{ portionsLabel(act) }}</span>
+                <div class="plan-day__actions">
+                  @if (isOwner) {
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      (click)="startEdit(act)"
+                      [disabled]="saving()"
+                    >
+                      <i class="fa-solid fa-pen"></i>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-mini btn-mini--no"
+                      (click)="removePlan(act)"
+                      [disabled]="saving()"
+                    >
+                      <i class="fa-solid fa-trash"></i>
+                      Delete
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn-mini"
+                      [class.btn-mini--ok]="assigningId() === act.id"
+                      (click)="startAssign(act)"
+                      [disabled]="saving()"
+                    >
+                      <i class="fa-solid fa-user-plus"></i>
+                      Assign task
+                    </button>
+                  }
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <p class="plan-day__empty">
+              <i class="fa-regular fa-calendar"></i>
+              Nothing planned for this day yet.
+            </p>
+          }
+
+          <!-- Owner: add / edit an activity -->
+          @if (isOwner) {
+            <div class="plan-day__form">
+              <h3 class="plan-day__form-title">
+                <i
+                  class="fa-solid"
+                  [class]="editingId() ? 'fa-pen' : 'fa-plus'"
+                  aria-hidden="true"
+                ></i>
+                {{ editingId() ? 'Edit activity' : 'Add an activity' }}
+              </h3>
+
+              <div class="field">
+                <label class="field__label" for="plan-title">Title *</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-pencil field__icon"></i>
+                  <input
+                    id="plan-title"
+                    #planTitleInput
+                    class="input"
+                    maxlength="150"
+                    placeholder="e.g. Irrigate the north block"
+                    [value]="formTitle()"
+                    (input)="formTitle.set(planTitleInput.value)"
+                  />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="plan-notes">Notes</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-align-left field__icon"></i>
+                  <textarea
+                    id="plan-notes"
+                    #planNotesInput
+                    class="input input--area"
+                    rows="2"
+                    maxlength="500"
+                    placeholder="Optional details for the team…"
+                    [value]="formNotes()"
+                    (input)="formNotes.set(planNotesInput.value)"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="plan-cadence">Repeats</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-repeat field__icon"></i>
+                  <select
+                    id="plan-cadence"
+                    #planCadenceSel
+                    class="select"
+                    [value]="formCadence()"
+                    (change)="onCadenceChange(planCadenceSel.value)"
+                  >
+                    <option value="once">Once — this day only</option>
+                    <option value="weekly">Weekly — every week</option>
+                    <option value="monthly">Monthly — every month</option>
+                  </select>
+                </div>
+              </div>
+
+              <p class="modal-hint">
+                <i class="fa-solid fa-circle-info"></i>
+                Weekly repeats on this day's weekday, monthly on this day of
+                the month — starting from today.
+              </p>
+
+              <div class="plan-day__form-actions">
+                @if (editingId()) {
+                  <button
+                    type="button"
+                    class="btn btn--ghost"
+                    (click)="cancelEdit()"
+                    [disabled]="saving()"
+                  >
+                    Cancel
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="btn btn--save"
+                  (click)="savePlan()"
+                  [disabled]="saving()"
+                >
+                  {{ saving() ? 'Saving…' : editingId() ? 'Save changes' : 'Add to plan' }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Supervisor: carve a portion into a task -->
+          @if (!isOwner && assigningId()) {
+            <div class="plan-day__form">
+              <h3 class="plan-day__form-title">
+                <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+                Carve out a portion
+              </h3>
+
+              <div class="field">
+                <label class="field__label" for="assign-title">Task title *</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-pencil field__icon"></i>
+                  <input
+                    id="assign-title"
+                    #taskTitleInput
+                    class="input"
+                    maxlength="150"
+                    [value]="assignTitle()"
+                    (input)="assignTitle.set(taskTitleInput.value)"
+                  />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="assign-assignee">Assign to *</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-user field__icon"></i>
+                  <select
+                    id="assign-assignee"
+                    #assigneeSel
+                    class="select"
+                    [value]="assignee()"
+                    (change)="assignee.set(assigneeSel.value)"
+                  >
+                    <option value="" disabled>Choose a worker</option>
+                    @if (workersLoading()) {
+                      <option value="" disabled>Loading team…</option>
+                    }
+                    @for (worker of workers(); track worker.id) {
+                      <option [value]="worker.email">{{ worker.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="assign-due">Due date *</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-calendar field__icon"></i>
+                  <input
+                    id="assign-due"
+                    #dueInput
+                    type="date"
+                    class="input"
+                    [value]="assignDue()"
+                    (input)="assignDue.set(dueInput.value)"
+                  />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="assign-notes">Notes</label>
+                <div class="field__box">
+                  <i class="fa-solid fa-align-left field__icon"></i>
+                  <textarea
+                    id="assign-notes"
+                    #taskNotesInput
+                    class="input input--area"
+                    rows="2"
+                    maxlength="500"
+                    placeholder="Optional instructions for the worker…"
+                    [value]="assignNotes()"
+                    (input)="assignNotes.set(taskNotesInput.value)"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="plan-day__form-actions">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  (click)="cancelAssign()"
+                  [disabled]="saving()"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--save"
+                  (click)="submitAssign()"
+                  [disabled]="saving()"
+                >
+                  {{ saving() ? 'Assigning…' : 'Assign task' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
     </div>
-  </article>
+  }
 </section>

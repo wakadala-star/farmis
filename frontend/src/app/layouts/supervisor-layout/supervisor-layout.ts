@@ -162,8 +162,8 @@ export class SupervisorLayout {
       case '/supervisor/activities':
         return {
           title: 'Farm Activities',
-          sub: 'Your department’s field entries — filter by date, activity or search.',
-          mob: 'Department field entries',
+          sub: 'Plan farm work on the calendar and review your department’s field entries.',
+          mob: 'Plan & field entries',
         };
       case '/supervisor/workers':
         return {
