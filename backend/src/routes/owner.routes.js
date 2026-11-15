@@ -436,6 +436,57 @@ router.get(
   },
 );
 
+/**
+ * GET /api/owner/auth-log — the Settings screen's sign-in activity:
+ * recent signup/signin/profile attempts with outcome, failure reason
+ * and IP address. Query: ?limit=25 (1..100), ?offset=0, ?failures=1.
+ */
+router.get('/auth-log', requireAuth, requireRole('owner'), async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? ''), 10) || 25, 1), 100);
+    const offset = Math.max(parseInt(String(req.query.offset ?? ''), 10) || 0, 0);
+    const failuresOnly = String(req.query.failures ?? '') === '1';
+    const where = failuresOnly ? "WHERE outcome = 'failure'" : '';
+
+    const [rowsRes, totalsRes] = await Promise.all([
+      query(
+        `SELECT attempt_id, action, outcome, email, reason, ip_address, created_at
+           FROM auth_attempts ${where}
+          ORDER BY created_at DESC, attempt_id DESC
+          LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
+      query(
+        `SELECT count(*)::int AS total,
+                count(*) FILTER (WHERE outcome = 'failure')::int AS failures
+           FROM auth_attempts`,
+      ),
+    ]);
+
+    const totals = {
+      all: totalsRes.rows[0].total,
+      failures: totalsRes.rows[0].failures,
+    };
+
+    res.json({
+      ok: true,
+      total: failuresOnly ? totals.failures : totals.all,
+      totals,
+      attempts: rowsRes.rows.map((r) => ({
+        id: String(r.attempt_id),
+        action: r.action,
+        outcome: r.outcome,
+        email: r.email,
+        reason: r.reason,
+        ip: r.ip_address,
+        at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** Local midnight today — for the overdue flag on due tasks. */
 function startOfToday() {
   const d = new Date();

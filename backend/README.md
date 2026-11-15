@@ -77,7 +77,8 @@ Requires the PostgreSQL service running locally with the credentials in
 | POST   | `/api/reports/operations` | owner/supervisor | Compute + store one of the 4 types (`Daily operations summary` = full 8-line snapshot, `Task performance`, `Attendance hours`, `Inputs & expenses` — owner shows farm-wide lines incl. expenses, supervisor dept-scoped lines) from `periodStart` |
 | GET    | `/api/owner/summary` | owner     | Dashboard aggregate — stat cards, 6-month sales series, recent sales, low-stock rows, pending approvals, tasks due soon, recent activity feed |
 | GET    | `/api/owner/finance` | owner     | Month summary (`?month=YYYY-MM`, default current) — sales/expenses/net this month vs last, expense breakdown by category |
-| GET    | `/api/owner/department/:code` | owner | One management page (`crops`\|`livestock`) — meta numbers, dept-scoped low stock, tasks due soon, latest entries |
+| GET    | `/api/owner/department/:code` | owner | One management page (`crops`\|`livestock`) - meta numbers, dept-scoped low stock, tasks due soon, latest entries |
+| GET    | `/api/owner/auth-log` | owner     | Recent sign-in/sign-up attempts (`?limit` 1-100, `?offset`, `?failures=1`) - outcome, failure reason, IP, time - feeds the Settings screen |
 | GET    | `/api/sales`        | owner/supervisor| Sales list, newest first — optional filters `dateFrom`/`dateTo` (inclusive days), `status`, `method`, `limit` (1–500, default 20); `count` = full match count |
 | GET    | `/api/sales/:id`    | owner/supervisor| Sale detail — receipt, customer, seller, line items, and the stock movements the sale produced |
 | GET    | `/api/sales/options`| owner/supervisor| Record Sale form pickers — customers + inventory items (stock levels) |
