@@ -48,6 +48,7 @@ Requires the PostgreSQL service running locally with the credentials in
 | GET    | `/api/users/:id/avatar` | required  | Team member's profile photo (team lists; 404 when none) |
 | POST   | `/api/users`       | owner/supervisor| Recruit — supervisor: creates an active **worker** in their own department and chooses the initial password · owner: worker/supervisor + department |
 | DELETE | `/api/users/:id`   | owner/supervisor| Remove from the team by deactivating the account (`inactive` blocks signin, history kept) — supervisor: own-dept workers only, owner: anyone but owners |
+| PATCH  | `/api/users/:id`   | owner          | Set employment status (`active` / `inactive`) — the Workers & HR **Activate** button brings a removed account back; owner: anyone but owners (not yourself) |
 | GET    | `/api/tasks/mine`  | required        | Tasks assigned to the signed-in user (cancelled hidden, mapped to open/in-progress/done) |
 | GET    | `/api/tasks/department` | supervisor | Every live task of the supervisor's department |
 | POST   | `/api/tasks`       | supervisor      | Assign work to an active team worker (assignee by email, required due date, optional `activityId` linking the portion to a farm activity) |

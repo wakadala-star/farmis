@@ -207,4 +207,63 @@ router.delete('/:id', requireAuth, requireRole('owner', 'supervisor'), async (re
   }
 });
 
+/**
+ * PATCH /api/users/:id — set employment_status from the body
+ * ({ employmentStatus: 'active' | 'inactive' }). The owner's Workers &
+ * HR screen uses it to bring a removed account back (and to remove it
+ * again); history stays intact either way.
+ *
+ *   owner → anyone except owners (never yourself)
+ */
+router.patch('/:id', requireAuth, requireRole('owner'), async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    if (!/^\d+$/.test(id)) return res.status(400).json({ ok: false, message: 'Invalid user id.' });
+
+    const status = String(req.body?.employmentStatus ?? '');
+    if (status !== 'active' && status !== 'inactive') {
+      return res.status(400).json({ ok: false, message: "Status must be 'active' or 'inactive'." });
+    }
+
+    const { rows } = await query(
+      `SELECT u.user_id, u.first_name, u.last_name, u.employment_status,
+              r.role_name
+         FROM users u
+         JOIN roles r ON r.role_id = u.role_id
+        WHERE u.user_id = $1::bigint`,
+      [id],
+    );
+    const target = rows[0];
+
+    const inScope =
+      target &&
+      String(target.user_id) !== String(req.user.id) && // never yourself
+      target.role_name !== 'owner';
+
+    if (!target || !inScope) {
+      return res.status(404).json({ ok: false, message: 'That person is not on your team.' });
+    }
+    if (target.employment_status === status) {
+      return res.status(409).json({
+        ok: false,
+        message:
+          status === 'active'
+            ? 'That account is already active.'
+            : 'That account is already inactive.',
+      });
+    }
+
+    await query('UPDATE users SET employment_status = $2 WHERE user_id = $1::bigint', [id, status]);
+
+    const fullName = `${target.first_name} ${target.last_name}`.trim();
+    const message =
+      status === 'active'
+        ? `${fullName} is active again.`
+        : `${fullName} was removed from the team.`;
+    return res.json({ ok: true, message });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = router;
