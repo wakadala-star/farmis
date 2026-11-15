@@ -1,4 +1,5 @@
 import { Component, computed, inject, output, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 
 /**
@@ -19,9 +20,12 @@ import { AuthService } from '../../core/auth.service';
 })
 export class ProfileMenu {
   readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   /** The shell closes its dropdown / signs out on this event. */
   readonly signedOut = output<void>();
+  /** The shell closes its dropdown after an in-menu navigation. */
+  readonly closed = output<void>();
 
   readonly phone = signal('');
   readonly saving = signal(false);
@@ -83,6 +87,12 @@ export class ProfileMenu {
     } else {
       this.error.set(res.message);
     }
+  }
+
+  /** Owner-only shortcut to the Settings screen (closes the dropdown). */
+  openSettings(): void {
+    void this.router.navigate(['/settings']);
+    this.closed.emit();
   }
 
   private clearFeedback(): void {

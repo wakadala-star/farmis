@@ -35,6 +35,24 @@ export interface ActionResult {
   message: string;
 }
 
+/** A row of GET /owner/auth-log (Settings → sign-in activity). */
+export interface AuthLogEntry {
+  id: string;
+  action: string; // 'signin' | 'signup' | 'profile_update'
+  outcome: 'success' | 'failure';
+  email: string | null;
+  reason: string | null;
+  ip: string | null;
+  at: string; // ISO timestamp
+}
+
+/** One page of the sign-in activity log. */
+export interface AuthLogPage {
+  total: number;
+  totals: { all: number; failures: number };
+  attempts: AuthLogEntry[];
+}
+
 type Collection =
   | 'tasks'
   | 'attendance'
@@ -471,7 +489,7 @@ function localClock(): string {
 }
 
 /** Extract the backend's { ok, message } body from an HTTP error. */
-function apiMessage(err: unknown): string {
+export function apiMessage(err: unknown): string {
   if (err instanceof HttpErrorResponse) {
     const body = err.error as { message?: string } | null;
     if (body?.message) return body.message;
@@ -1313,6 +1331,22 @@ export class FarmApiService {
    *  it stay in the queues (the link is cleared server-side). */
   deletePlanActivity(id: string): Promise<ActionResult> {
     return this.send('DELETE', `/activities/${id}`, {}, 'plan');
+  }
+
+  /* ---------------- owner settings (sign-in activity + status) ---------------- */
+
+  /** Recent sign-in attempts for the Settings screen (GET /owner/auth-log). */
+  getAuthLog(limit: number, offset: number, failuresOnly: boolean): Promise<AuthLogPage> {
+    const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (failuresOnly) qs.set('failures', '1');
+    return this.get<AuthLogPage>(`/owner/auth-log?${qs.toString()}`);
+  }
+
+  /** Pings GET /health — resolves with the round-trip latency in ms. */
+  async pingApi(): Promise<number> {
+    const started = performance.now();
+    await this.get<{ ok: boolean }>('/health');
+    return Math.round(performance.now() - started);
   }
 
   /* ---------------- internals ---------------- */

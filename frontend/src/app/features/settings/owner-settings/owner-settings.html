@@ -1,0 +1,184 @@
+<section class="ws">
+  <p class="ws__note">
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>
+      Every sign-in and sign-up attempt on the farm, newest first — successful
+      visits and rejected ones (wrong password, unknown email, duplicate
+      sign-up) with the address they came from.
+    </span>
+  </p>
+
+  <div class="ws__grid">
+    <!-- ============ Sign-in activity ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-shield-halved widget__icon"></i>
+        <h2 class="widget__title">Sign-in Activity</h2>
+      </header>
+
+      <div class="widget__body">
+        <div class="ws-tabs">
+          <button
+            type="button"
+            class="ws-tabs__btn"
+            [class.is-active]="!failuresOnly()"
+            (click)="setFilter(false)"
+          >
+            <i class="fa-solid fa-list"></i>
+            All
+            <span class="badge-count">{{ totals().all }}</span>
+          </button>
+          <button
+            type="button"
+            class="ws-tabs__btn"
+            [class.is-active]="failuresOnly()"
+            (click)="setFilter(true)"
+          >
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Failures
+            <span class="badge-count">{{ totals().failures }}</span>
+          </button>
+        </div>
+
+        @if (loading()) {
+          <p class="empty-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading activity…
+          </p>
+        } @else if (loadError()) {
+          <p class="empty-state">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ loadError() }}
+          </p>
+          <button type="button" class="btn-mini settings-more" (click)="retryLog()">
+            <i class="fa-solid fa-rotate-right"></i>
+            Retry
+          </button>
+        } @else {
+          <div>
+            @for (a of attempts(); track a.id) {
+              <div class="list-row">
+                <span [class]="rowIconTone(a)"
+                  ><i [class]="rowIconGlyph(a)"></i
+                ></span>
+                <div class="list-row__main">
+                  <p class="list-row__title-row">
+                    <strong class="list-row__title">{{
+                      a.email || 'Unknown email'
+                    }}</strong>
+                    <span [class]="outcomeChip(a)">{{
+                      a.outcome === 'success' ? 'Success' : 'Failed'
+                    }}</span>
+                    <span class="chip chip--neutral">{{
+                      actionLabel(a)
+                    }}</span>
+                  </p>
+                  <p class="list-row__sub">
+                    @if (reasonLabel(a); as reason) {
+                      <span>{{ reason }} · </span>
+                    }
+                    @if (a.ip) {
+                      <span>{{ a.ip }} · </span>
+                    }
+                    <span [title]="absTime(a.at)">{{ relTime(a.at) }}</span>
+                  </p>
+                </div>
+              </div>
+            } @empty {
+              <p class="empty-state">
+                <i class="fa-regular fa-circle-check"></i>
+                {{
+                  failuresOnly()
+                    ? 'No failed attempts — nothing has been rejected.'
+                    : 'No activity recorded yet.'
+                }}
+              </p>
+            }
+          </div>
+
+          @if (hasMore()) {
+            <button
+              type="button"
+              class="btn-mini settings-more"
+              (click)="loadMore()"
+              [disabled]="loadingMore()"
+            >
+              @if (loadingMore()) {
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fa-solid fa-chevron-down"></i>
+              }
+              {{ loadingMore() ? 'Loading…' : 'Load more' }}
+            </button>
+          }
+        }
+      </div>
+    </article>
+
+    <!-- ============ About & system status ============ -->
+    <article class="widget">
+      <header class="widget__head">
+        <i class="fa-solid fa-circle-info widget__icon"></i>
+        <h2 class="widget__title">About FARMIS</h2>
+      </header>
+
+      <div class="widget__body">
+        <div class="list-row">
+          <span class="list-row__icon"><i class="fa-solid fa-tag"></i></span>
+          <div class="list-row__main">
+            <p class="list-row__title-row">
+              <strong class="list-row__title">Version</strong>
+            </p>
+            <p class="list-row__sub">FARMIS {{ version }} · owner workspace</p>
+          </div>
+        </div>
+
+        <div class="list-row">
+          <span class="list-row__icon list-row__icon--blue"
+            ><i class="fa-regular fa-calendar"></i
+          ></span>
+          <div class="list-row__main">
+            <p class="list-row__title-row">
+              <strong class="list-row__title">Site last updated</strong>
+            </p>
+            <p class="list-row__sub">{{ siteUpdated() || '—' }}</p>
+          </div>
+        </div>
+
+        <div class="list-row">
+          <span [class]="statusIcon()"><i class="fa-solid fa-server"></i></span>
+          <div class="list-row__main">
+            <p class="list-row__title-row">
+              <strong class="list-row__title">API status</strong>
+              <span [class]="apiChip()">{{ apiChipLabel() }}</span>
+            </p>
+            <p class="list-row__sub">
+              @if (apiState() === 'offline') {
+                Cannot reach the FARMIS server — check your internet connection.
+              } @else if (apiState() === 'live') {
+                Checked at {{ checkedAt() }} — the app can reach the backend.
+              } @else {
+                Pinging the backend…
+              }
+            </p>
+          </div>
+          <div class="list-row__side">
+            <button
+              type="button"
+              class="btn-mini"
+              (click)="checkApi()"
+              [disabled]="apiState() === 'checking'"
+            >
+              @if (apiState() === 'checking') {
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fa-solid fa-rotate"></i>
+              }
+              {{ apiState() === 'checking' ? 'Checking…' : 'Check again' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>

@@ -110,6 +110,13 @@ export const routes: Routes = [
             (m) => m.ReportsScreen,
           ),
       },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./features/settings/owner-settings/owner-settings').then(
+            (m) => m.OwnerSettings,
+          ),
+      },
     ],
   },
 

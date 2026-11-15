@@ -82,6 +82,18 @@
     }
   </div>
 
+  @if (auth.role() === 'owner') {
+    <button
+      type="button"
+      class="user-menu__item"
+      role="menuitem"
+      (click)="openSettings()"
+    >
+      <i class="fa-solid fa-gear"></i>
+      <span>Settings</span>
+    </button>
+  }
+
   <button
     type="button"
     class="user-menu__item user-menu__item--danger"

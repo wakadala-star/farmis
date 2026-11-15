@@ -37,7 +37,10 @@
 
     <div class="sidebar__foot">
       @if (userMenuOpen()) {
-        <app-profile-menu (signedOut)="signOut()" />
+        <app-profile-menu
+          (signedOut)="signOut()"
+          (closed)="closeDrawer()"
+        />
       }
 
       <button

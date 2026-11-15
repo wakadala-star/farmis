@@ -162,6 +162,12 @@ export class OwnerLayout {
           sub: `Welcome back, ${name}! Generate farm-wide reports and export them as CSV.`,
           mob: 'Reports & CSV export',
         };
+      case '/settings':
+        return {
+          title: 'Settings',
+          sub: `Welcome back, ${name}! Sign-in activity and system status.`,
+          mob: 'Activity & system status',
+        };
       default:
         return {
           title: 'Dashboard',
@@ -182,7 +188,7 @@ export class OwnerLayout {
     { label: 'Finance', icon: 'fa-solid fa-wallet', link: '/finance' },
     { label: 'Farm Activities', icon: 'fa-solid fa-calendar-check', link: '/activities' },
     { label: 'Reports', icon: 'fa-solid fa-chart-column', link: '/reports' },
-    { label: 'Settings', icon: 'fa-solid fa-gear' },
+    { label: 'Settings', icon: 'fa-solid fa-gear', link: '/settings' },
   ];
 
   constructor() {
