@@ -34,6 +34,8 @@ export class OwnerWorkers {
   readonly submitting = signal(false);
   /** Member id whose removal is in flight (disables that button). */
   readonly removingId = signal('');
+  /** Member id whose reactivation is in flight (disables that button). */
+  readonly activatingId = signal('');
 
   /** Rows whose photo failed to load → render initials instead. */
   private readonly failedAvatars = signal<ReadonlySet<string>>(new Set());
@@ -78,11 +80,13 @@ export class OwnerWorkers {
   );
 
   constructor() {
-    void this.api.ensure('staff');
+    // Always re-read the staff list: accounts signed up since the last
+    // visit (and their active/inactive state) must be current here.
+    void this.api.ensure('staff', true);
   }
 
   retry(): void {
-    void this.api.ensure('staff');
+    void this.api.ensure('staff', true);
   }
 
   invalid(control: 'name' | 'email' | 'password'): boolean {
@@ -174,6 +178,23 @@ export class OwnerWorkers {
       this.notice.set(res.message);
     } finally {
       this.removingId.set('');
+    }
+  }
+
+  /** Brings a removed account back (PATCH /users/:id → active). */
+  async reactivate(member: StaffRec): Promise<void> {
+    if (this.activatingId()) return;
+    this.activatingId.set(member.id);
+    try {
+      const res = await this.api.reactivateMember(member.id);
+      if (!res.ok) {
+        this.error.set(res.message);
+        return;
+      }
+      this.error.set('');
+      this.notice.set(res.message);
+    } finally {
+      this.activatingId.set('');
     }
   }
 }

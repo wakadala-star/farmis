@@ -173,7 +173,7 @@ export class ActivitiesScreen {
     void this.loadActivities();
     void this.load();
     void this.api.ensure('plan');
-    if (!this.isOwner) void this.api.ensure('workers');
+    if (!this.isOwner) void this.api.ensure('workers', true);
   }
 
   /* ---------------- plan: month + day navigation ---------------- */

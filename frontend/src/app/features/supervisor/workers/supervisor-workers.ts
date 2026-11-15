@@ -67,11 +67,12 @@ export class SupervisorWorkers {
   readonly loadError = this.api.workersError;
 
   constructor() {
-    void this.api.ensure('workers');
+    // Always re-read the team so freshly signed-up accounts appear.
+    void this.api.ensure('workers', true);
   }
 
   retry(): void {
-    void this.api.ensure('workers');
+    void this.api.ensure('workers', true);
   }
 
   invalid(control: 'name' | 'email' | 'password'): boolean {

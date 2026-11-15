@@ -224,6 +224,24 @@
                     }
                     Remove
                   </button>
+                } @else if (
+                  member.employmentStatus === 'inactive' &&
+                  member.role !== 'owner'
+                ) {
+                  <button
+                    type="button"
+                    class="btn-mini btn-mini--ok"
+                    title="Reactivate this account"
+                    [disabled]="activatingId() === member.id"
+                    (click)="reactivate(member)"
+                  >
+                    @if (activatingId() === member.id) {
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                    } @else {
+                      <i class="fa-solid fa-rotate-left"></i>
+                    }
+                    Activate
+                  </button>
                 }
               </div>
             </div>

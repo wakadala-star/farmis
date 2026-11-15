@@ -628,6 +628,53 @@ export class FarmApiService {
     await this.load(col, force && state.loaded);
   }
 
+  /**
+   * Drop every cached collection. AuthService calls this when the
+   * signed-in account changes (sign in / sign out) so one user's
+   * lists — tasks, team, staff — never leak into another user's
+   * session; each screen refetches its scoped data on the next ensure.
+   */
+  reset(): void {
+    this._tasks.set([]);
+    this._attendance.set([]);
+    this._entries.set([]);
+    this._plan.set([]);
+    this._reports.set([]);
+    this._workers.set([]);
+    this._deptTasks.set([]);
+    this._deptAttendance.set([]);
+    this._transactions.set([]);
+    this._myTransactions.set([]);
+    this._deptReports.set([]);
+    this._opsReports.set([]);
+    this._ownerSummary.set(null);
+    this._deptCrops.set(null);
+    this._deptLivestock.set(null);
+    this._crops.set([]);
+    this._livestock.set([]);
+    this._staff.set([]);
+    this._state.set({
+      tasks: fresh(),
+      attendance: fresh(),
+      entries: fresh(),
+      plan: fresh(),
+      reports: fresh(),
+      workers: fresh(),
+      deptTasks: fresh(),
+      deptAttendance: fresh(),
+      transactions: fresh(),
+      myTransactions: fresh(),
+      deptReports: fresh(),
+      opsReports: fresh(),
+      ownerSummary: fresh(),
+      deptCrops: fresh(),
+      deptLivestock: fresh(),
+      crops: fresh(),
+      livestock: fresh(),
+      staff: fresh(),
+    });
+  }
+
   private async load(col: Collection, silent = false): Promise<void> {
     if (!silent) this.patch(col, { loading: true, error: '' });
     try {
@@ -874,6 +921,11 @@ export class FarmApiService {
   /** Deactivates a staff member's account (DELETE /users/:id). */
   removeMember(id: string): Promise<ActionResult> {
     return this.send('DELETE', `/users/${id}`, undefined, 'staff');
+  }
+
+  /** Reactivates a removed account (PATCH /users/:id, status active). */
+  reactivateMember(id: string): Promise<ActionResult> {
+    return this.send('PATCH', `/users/${id}`, { employmentStatus: 'active' }, 'staff');
   }
 
   /**

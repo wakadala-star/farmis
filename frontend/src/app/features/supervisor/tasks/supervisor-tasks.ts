@@ -69,7 +69,9 @@ export class SupervisorTasks implements OnInit {
 
   constructor() {
     void this.api.ensure('deptTasks');
-    void this.api.ensure('workers');
+    // Always re-read the team: an account signed up since the last
+    // visit (or another login in this tab) must show up in the picker.
+    void this.api.ensure('workers', true);
   }
 
   ngOnInit(): void {

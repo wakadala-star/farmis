@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthResult, Department, Role, Session } from './models';
 import { API_BASE } from './api';
+import { FarmApiService } from './farm-api.service';
 
 const SESSION_KEY = 'farmis.session';
 
@@ -39,6 +40,7 @@ interface ApiResponse {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly farmApi = inject(FarmApiService);
 
   private readonly _session = signal<Session | null>(readJson<Session>(SESSION_KEY));
 
@@ -208,6 +210,9 @@ export class AuthService {
   }
 
   private setSession(session: Session | null): void {
+    // A different account (or signing out) must never see the previous
+    // account's cached lists — drop them all; screens refetch on entry.
+    const switched = (this._session()?.id ?? null) !== (session?.id ?? null);
     this._session.set(session);
     try {
       if (session) {
@@ -218,6 +223,7 @@ export class AuthService {
     } catch {
       /* storage unavailable — session only lives in memory */
     }
+    if (switched) this.farmApi.reset();
   }
 }
 
